@@ -1,0 +1,17 @@
+# Project Review Rules
+#
+# Copy this file to .claude/review.md in your project root.
+# The /review skill reads it and applies these rules on top of its base checks.
+# Rules here EXTEND and OVERRIDE the defaults — they don't replace them.
+
+## Focus Areas
+- This project uses the Repository pattern. Flag any direct database calls outside of files in `app/repositories/`.
+- All API endpoints must have input validation. Flag any controller actions that use params directly without a validator.
+
+## Ignore
+- Ignore line length warnings in `db/schema.rb`
+- Don't flag missing type hints in test files
+
+## Stack Notes
+- We use Rails 7 with Hotwire. Flag any use of `render json:` in controllers (should use Turbo Streams instead).
+- Python services use FastAPI. Flag any route handlers missing `response_model`.
