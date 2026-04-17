@@ -1,0 +1,63 @@
+{
+  "PreCompact": [
+    {
+      "matcher": "*",
+      "hooks": [
+        {
+          "type": "command",
+          "command": "~/.claude/hooks/compaction-todo-preserver.sh",
+          "statusMessage": "Preserving TODO state before compaction"
+        }
+      ]
+    }
+  ],
+  "PostCompact": [
+    {
+      "matcher": "*",
+      "hooks": [
+        {
+          "type": "command",
+          "command": "~/.claude/hooks/post-compact-todo-restore.sh",
+          "statusMessage": "Restoring TODO state after compaction"
+        }
+      ]
+    }
+  ],
+  "PreToolUse": [
+    {
+      "matcher": "Write",
+      "hooks": [
+        {
+          "type": "command",
+          "command": "~/.claude/hooks/write-existing-file-guard.sh",
+          "statusMessage": "Checking if file exists"
+        }
+      ]
+    }
+  ],
+  "PostToolUse": [
+    {
+      "matcher": "Write|Edit",
+      "hooks": [
+        {
+          "type": "command",
+          "command": "~/.claude/hooks/auto-lint-on-edit.sh",
+          "statusMessage": "Running lint on edited file",
+          "if": "Write(*.ts)|Write(*.js)|Write(*.tsx)|Write(*.jsx)"
+        }
+      ]
+    }
+  ],
+  "SessionStart": [
+    {
+      "matcher": "resume",
+      "hooks": [
+        {
+          "type": "command",
+          "command": "~/.claude/hooks/session-context-loader.sh",
+          "statusMessage": "Loading session context"
+        }
+      ]
+    }
+  ]
+}

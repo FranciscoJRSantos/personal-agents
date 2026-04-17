@@ -14,6 +14,31 @@ unified dashboard with a recommended next step.
 
 ---
 
+## Step 0: Load Memory Context
+
+Load the memory index to surface relevant user preferences and project context before
+gathering state:
+
+```bash
+GLOBAL_MEM=~/.agents/memory/MEMORY.md
+PROJECT_MEM=./agents/memory/MEMORY.md
+
+[ -f "$GLOBAL_MEM" ] && cat "$GLOBAL_MEM"
+[ -f "$PROJECT_MEM" ] && cat "$PROJECT_MEM"
+```
+
+Scan the index entries for anything relevant to the current session (user preferences,
+active project goals, known constraints). For each relevant entry, load its full file:
+
+```bash
+cat ~/.agents/memory/<matched-slug>.md      # global entries
+cat ./agents/memory/<matched-slug>.md       # project entries
+```
+
+If no memory files exist, skip silently and proceed.
+
+---
+
 ## Step 1: Identify the Current Context
 
 ```bash

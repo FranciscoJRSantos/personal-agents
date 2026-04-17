@@ -3,7 +3,7 @@
 ## Quick Start
 ```bash
 git clone <repo>
-make deploy   # Deploys all skills to ~/.claude/skills/, ~/.gemini/skills/, ~/.config/eca/skills/
+make deploy   # Deploys skills, agents, and hooks to ~/.claude/ and ~/.gemini/
 ```
 
 ## Architecture
@@ -59,10 +59,36 @@ Skills pass context to each other through files in `.agents/artifacts/`:
 
 | Command | What it does |
 |---|---|
-| `make deploy` | Sync to Claude, Gemini, and ECA |
+| `make deploy` | Sync to Claude, Gemini + hooks + agents |
 | `make deploy-claude` | Sync to `~/.claude/skills/` only |
 | `make deploy-gemini` | Sync to `~/.gemini/skills/` only |
-| `make deploy-eca` | Sync to `~/.config/eca/skills/` only |
+| `make deploy-hooks` | Deploy hooks scripts + merge into `~/.claude/settings.json` |
+| `make deploy-agents` | Sync agents to `~/.agents/` (resolves categories first) |
 | `make deploy-dry` | Preview changes without writing |
 | `make pull` | Pull changes from deployed locations back into repo |
 | `make list-skills` | List all global skills |
+| `make list-hooks` | List deployed hook scripts |
+
+## Hooks
+
+Hooks live in `hooks/scripts/` and are deployed to `~/.claude/hooks/`. Their config is merged into `~/.claude/settings.json`.
+
+- `compaction-todo-preserver.sh` — runs on `PreCompact`
+- `post-compact-todo-restore.sh` — runs on `PostCompact`
+- `write-existing-file-guard.sh` — runs on `PreToolUse` (Write)
+- `auto-lint-on-edit.sh` — runs on `PostToolUse` (Write/Edit)
+- `session-context-loader.sh` — runs on `SessionStart` (resume)
+
+## Agent Categories
+
+Agents can use `category:` in frontmatter to reference models from `categories.json`:
+
+```yaml
+---
+name: fast-reviewer
+description: Quick code review
+category: quick
+---
+```
+
+`make deploy-agents` resolves `category:` → `model:` before syncing to `~/.agents/`.

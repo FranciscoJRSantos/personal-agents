@@ -13,6 +13,31 @@ Generate a progress summary by pulling data from git, GitLab, and Jira.
 
 ---
 
+## Step 0: Load Memory Context
+
+Load the memory index to surface project context before gathering activity data:
+
+```bash
+GLOBAL_MEM=~/.agents/memory/MEMORY.md
+PROJECT_MEM=./agents/memory/MEMORY.md
+
+[ -f "$GLOBAL_MEM" ] && cat "$GLOBAL_MEM"
+[ -f "$PROJECT_MEM" ] && cat "$PROJECT_MEM"
+```
+
+Scan for project-related entries (active goals, stakeholders, ongoing initiatives).
+For each relevant entry, load its full file:
+
+```bash
+cat ~/.agents/memory/<matched-slug>.md      # global entries
+cat ./agents/memory/<matched-slug>.md       # project entries
+```
+
+Use recalled context to give more meaningful summaries in Step 3. If no memory files
+exist, skip silently and proceed.
+
+---
+
 ## Step 1: Determine Time Range
 
 Parse the user's input for a time range:

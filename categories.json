@@ -1,0 +1,22 @@
+{
+  "quick": {
+    "model": "haiku",
+    "description": "Fast, trivial tasks"
+  },
+  "deep": {
+    "model": "sonnet",
+    "description": "Complex reasoning, thorough research"
+  },
+  "heavy": {
+    "model": "opus",
+    "description": "Heavy computation, complex architectures"
+  },
+  "visual-engineering": {
+    "model": "gemini-2.0-flash",
+    "description": "Frontend, UI/UX, design tasks"
+  },
+  "writing": {
+    "model": "haiku",
+    "description": "Documentation and prose"
+  }
+}

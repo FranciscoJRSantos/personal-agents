@@ -2,15 +2,23 @@ GLOBAL_SKILLS     := skills/global
 CLAUDE_DIR        ?= $(HOME)/.claude/skills
 GEMINI_DIR        ?= $(HOME)/.gemini/skills
 
+HOOKS_SCRIPTS    := hooks/scripts
+HOOKS_CONFIG     := hooks/hooks.json
+CLAUDE_HOOKS_DIR ?= $(HOME)/.claude/hooks
+CLAUDE_SETTINGS  ?= $(HOME)/.claude/settings.json
+
 AGENTS_SRC           := agents
+AGENTS_PARTIALS      := agents/partials
 AGENTS_DIR           ?= $(HOME)/.agents
 CLAUDE_AGENTS_LINK   ?= $(HOME)/.claude/agents
 OPENCODE_AGENTS_LINK ?= $(HOME)/.config/opencode/agents
 
-.PHONY: deploy deploy-claude deploy-gemini deploy-agents deploy-projects pull pull-claude pull-agents pull-projects deploy-dry list-skills lint-skills list-agents lint-agents setup
+CATEGORIES_FILE      := categories.json
+
+.PHONY: deploy deploy-claude deploy-gemini deploy-agents deploy-hooks deploy-projects pull pull-claude pull-agents pull-hooks pull-projects deploy-dry list-skills lint-skills list-agents lint-agents list-hooks setup
 
 ## Deploy everything
-deploy: deploy-claude deploy-gemini deploy-agents
+deploy: deploy-claude deploy-gemini deploy-agents deploy-hooks
 
 ## Global skills → ~/.claude/skills/
 deploy-claude:
@@ -22,11 +30,36 @@ deploy-gemini:
 
 ## Agents → ~/.agents/ (canonical); Claude Code + opencode read via symlinks (run 'make setup' first)
 deploy-agents:
+	@echo "Deploying agents to $(AGENTS_DIR)..."
 	mkdir -p $(AGENTS_DIR)
 	rsync -av --delete $(AGENTS_SRC)/ $(AGENTS_DIR)/
+	@if [ -f "$(CATEGORIES_FILE)" ]; then \
+		echo "Resolving agent categories in $(AGENTS_DIR)..."; \
+		for f in $(AGENTS_DIR)/*.md $(AGENTS_DIR)/**/*.md; do \
+			[ -e "$$f" ] || continue; \
+			agent=$$(basename "$$f" .md); \
+			fm=$$(sed -n '1,/^---$$/p' "$$f" 2>/dev/null); \
+			[ -n "$$fm" ] || continue; \
+			category=$$(echo "$$fm" | yq '.category // ""' | grep -v '^null$$' | head -1); \
+			if [ -n "$$category" ] && [ "$$category" != '""' ]; then \
+				model=$$(jq -r '.["'"$$category"'"].model // empty' "$(CATEGORIES_FILE)"); \
+				if [ -n "$$model" ]; then \
+					echo "  $$agent: category=$$category → model=$$model"; \
+					sed -i 's/^model:.*/model: '"$$model"'/' "$$f"; \
+				else \
+					echo "WARN  $$agent: category '$$category' not found in categories.json"; \
+				fi \
+			fi \
+		done; \
+	fi
+
+## Resolve agent categories to models before deploying (DEPRECATED - logic moved to deploy-agents)
+resolve-agents:
+	@echo "DEPRECATED: resolve-agents logic is now part of deploy-agents (resolving at destination)"
 
 ## Pull local changes back into the repository
-pull: pull-claude pull-agents
+
+pull: pull-claude pull-agents pull-hooks
 
 ## ~/.claude/skills/ → Global skills
 pull-claude:
@@ -42,7 +75,13 @@ deploy-dry:
 	@echo "=== gemini ===" && rsync -avn --delete $(GLOBAL_SKILLS)/ $(GEMINI_DIR)/
 	@echo "=== agents ===" && rsync -avn --delete $(AGENTS_SRC)/ $(AGENTS_DIR)/
 
-## List all skills by group
+## ~/.claude/hooks/ → hooks/scripts/
+pull-hooks:
+	rsync -av $(CLAUDE_HOOKS_DIR)/ $(HOOKS_SCRIPTS)/
+
+## List all deployed hooks
+list-hooks:
+	@echo "Hook scripts ($(shell ls $(CLAUDE_HOOKS_DIR)/*.sh 2>/dev/null | wc -l)):" && ls $(CLAUDE_HOOKS_DIR)/*.sh 2>/dev/null || echo "(not deployed — run make deploy-hooks)"
 list-skills:
 	@echo "Global ($(shell ls $(GLOBAL_SKILLS) | wc -l) skills):" && ls $(GLOBAL_SKILLS)/
 
@@ -60,23 +99,32 @@ lint-agents:
 			ok=false; \
 			continue; \
 		fi; \
-		fm=$$(sed -n '2,/^---$$/p' "$$f"); \
-		if ! echo "$$fm" | grep -q '^name:'; then \
+		fm=$$(sed -n '1,/^---$$/p' "$$f"); \
+		name=$$(echo "$$fm" | yq '.name // ""' | grep -v '^null$$' | head -1); \
+		description=$$(echo "$$fm" | yq '.description // ""' | grep -v '^null$$' | head -1); \
+		if [ -z "$$name" ] || [ "$$name" = '""' ]; then \
 			echo "FAIL  $$agent: frontmatter missing 'name:' field"; \
 			ok=false; \
 		fi; \
-		if ! echo "$$fm" | grep -q '^description:'; then \
+		if [ -z "$$description" ] || [ "$$description" = '""' ]; then \
 			echo "FAIL  $$agent: frontmatter missing 'description:' field"; \
 			ok=false; \
 		fi; \
-		if ! echo "$$fm" | grep -q 'permission:'; then \
+		if ! echo "$$fm" | yq -e '.permission' >/dev/null 2>&1; then \
 			echo "WARN  $$agent: missing 'permission:' block (needed for opencode)"; \
 		fi; \
-		if echo "$$fm" | grep -q '^name:' && echo "$$fm" | grep -q '^description:'; then \
-			echo "OK    $$agent"; \
+		category=$$(echo "$$fm" | yq '.category // ""' | grep -v '^null$$' | head -1); \
+		if [ -n "$$category" ] && [ "$$category" != '""' ]; then \
+			if ! jq -e '.["'"$$category"'"]' "$(CATEGORIES_FILE)" >/dev/null 2>&1; then \
+				echo "WARN  $$agent: category '$$category' not defined in categories.json"; \
+			fi \
 		fi; \
+		if [ -n "$$name" ] && [ "$$name" != '""' ] && [ -n "$$description" ] && [ "$$description" != '""' ]; then \
+			echo "OK    $$agent"; \
+		fi \
 	done; \
 	$$ok
+
 
 ## One-time setup: create ~/.agents/ and symlink Claude Code + opencode to it
 setup:

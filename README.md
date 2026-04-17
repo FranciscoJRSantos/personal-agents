@@ -6,12 +6,12 @@ Research-backed agent skills and subagents for software engineering and ML resea
 
 **Ticket-based development:**
 ```
-/refine TICKET → /plan TICKET → /branch TICKET → /implement → /check → /review → /ship
+/refine TICKET → /plan TICKET → /implement → /check → /review → /ship
 ```
 
 **ML research cycle:**
 ```
-/refine TICKET → /plan TICKET → train → /experiment → /report
+/refine TICKET → /plan TICKET → /implement -> train models → /experiment → /report → /check → /review → /ship
 ```
 
 **Quick fixes:**
@@ -31,10 +31,10 @@ Research-backed agent skills and subagents for software engineering and ML resea
 ```bash
 git clone <repo>
 make setup    # one-time: create ~/.agents/ and symlink Claude Code + OpenCode to it
-make deploy   # sync skills and agents to all destinations
+make deploy   # sync skills, agents, and hooks to all destinations
 ```
 
-`make deploy` rsyncs `skills/global/` to `~/.claude/skills/`, `~/.gemini/skills/`, and `~/.config/eca/skills/`. Agents are synced to `~/.agents/` (symlinked from `~/.claude/agents/` and `~/.config/opencode/agents/`).
+`make deploy` rsyncs `skills/global/` to `~/.claude/skills/` and `~/.gemini/skills/`. Agents are synced to `~/.agents/` (symlinked from `~/.claude/agents/` and `~/.config/opencode/agents/`). Hooks are deployed to `~/.claude/hooks/` and merged into `~/.claude/settings.json`.
 
 ---
 
@@ -42,23 +42,23 @@ make deploy   # sync skills and agents to all destinations
 
 | Skill                | Invocation                    | Purpose                                                                 | Workflow    |
 |----------------------|-------------------------------|-------------------------------------------------------------------------|-------------|
-| `/adr`               | `/adr [decision]`             | Record architecture decisions with context, rationale, and alternatives | Any         |
+| `/refine`            | `/refine [TICKET]`            | Refine a Jira ticket interactively                                      | Ticket / ML |
+| `/plan`              | `/plan TICKET`                | Generate type-aware implementation plan → Jira comment                  | Ticket / ML |
 | `/branch`            | `/branch TICKET`              | Create branch, sync deps, surface existing plan                         | Ticket      |
+| `/implement`         | `/implement`                  | Staged implementation with hard gates between 5 phases                  | Ticket      |
+| `/test`              | `/test`                       | Generate tests from plan acceptance criteria + diff                     | Ticket      |
+| `/review`            | `/review`                     | Severity-grouped code review vs main                                    | Ticket      |
 | `/check`             | `/check`                      | Lint + type check + tests (auto-detects stack)                          | Ticket      |
-| `/experiment`        | `/experiment`                 | Capture ML experiment results into artifact for `/report`               | ML          |
-| `/experiment-review` | `/experiment-review [run-id]` | Pull W&B runs, display metrics, append to EXPERIMENTS.md                | ML          |
+| `/ship`              | `/ship`                       | Gate on review → check → commit → push → MR                             | Ticket      |
 | `/gitlab`            | `/gitlab`                     | MRs, pipelines, issues via `glab`                                       | Ticket      |
 | `/hotfix`            | `/hotfix [TICKET] desc`       | Streamlined branch → fix → check → ship for urgent changes              | Ticket      |
-| `/implement`         | `/implement`                  | Staged implementation with hard gates between 5 phases                  | Ticket      |
-| `/learn`             | `/learn [rule]`               | Capture a session correction into CLAUDE.md or .agents/conventions.md   | Any         |
-| `/plan`              | `/plan TICKET`                | Generate type-aware implementation plan → Jira comment                  | Ticket / ML |
-| `/refine`            | `/refine [TICKET]`            | Refine a Jira ticket interactively                                      | Ticket / ML |
+| `/experiment`        | `/experiment`                 | Capture ML experiment results into artifact for `/report`               | ML          |
+| `/experiment-review` | `/experiment-review [run-id]` | Pull W&B runs, display metrics, append to EXPERIMENTS.md                | ML          |
 | `/report`            | `/report`                     | Publish ML experiment report to Confluence                              | ML          |
-| `/review`            | `/review`                     | Severity-grouped code review vs main                                    | Ticket      |
-| `/ship`              | `/ship`                       | Gate on review → check → commit → push → MR                             | Ticket      |
+| `/learn`             | `/learn [rule]`               | Capture a session correction into CLAUDE.md or .agents/conventions.md   | Any         |
+| `/adr`               | `/adr [decision]`             | Record architecture decisions with context, rationale, and alternatives | Any         |
 | `/standup`           | `/standup [range]`            | Progress summary from git, MRs, Jira                                    | Any         |
 | `/status`            | `/status`                     | Show current state and recommend the next workflow step                 | Any         |
-| `/test`              | `/test`                       | Generate tests from plan acceptance criteria + diff                     | Ticket      |
 | `/tidy`              | `/tidy`                       | Clean up stale artifacts from completed tickets                         | Any         |
 
 ---
@@ -93,6 +93,51 @@ Skills pass context to each other via `.agents/artifacts/`:
 
 ---
 
+## Hooks
+
+Hooks are shell scripts that fire at Claude Code lifecycle events. They live in `hooks/scripts/` and are deployed to `~/.claude/hooks/`. Their event configuration is merged into `~/.claude/settings.json` on `make deploy-hooks`.
+
+| Hook | Event | Purpose |
+|------|-------|---------|
+| `compaction-todo-preserver.sh` | `PreCompact` | Saves in-progress TODO/impl state before context compaction |
+| `post-compact-todo-restore.sh` | `PostCompact` | Restores saved state after compaction so work isn't lost |
+| `write-existing-file-guard.sh` | `PreToolUse` (Write) | Warns when a Write targets an already-existing file |
+| `auto-lint-on-edit.sh` | `PostToolUse` (Write/Edit) | Runs project linter on edited JS/TS files |
+| `session-context-loader.sh` | `SessionStart` (resume) | Injects impl-progress context when a session resumes |
+
+```bash
+make deploy-hooks   # deploy scripts + merge config into ~/.claude/settings.json
+make list-hooks     # list deployed hook scripts
+make pull-hooks     # pull changes back from ~/.claude/hooks/ into the repo
+```
+
+---
+
+## Agent Categories
+
+`categories.json` defines named model presets. Agents can opt into a preset via `category:` in their frontmatter; `make deploy-agents` resolves it to a concrete `model:` before syncing.
+
+```json
+{
+  "quick":  { "model": "haiku"  },
+  "deep":   { "model": "sonnet" },
+  "heavy":  { "model": "opus"   }
+}
+```
+
+Agent frontmatter example:
+```yaml
+---
+name: fast-reviewer
+description: Quick code review
+category: quick
+---
+```
+
+To reroute all agents to a different model tier, update `categories.json` and re-run `make deploy-agents`. `make lint-agents` validates that every `category:` value exists in `categories.json`.
+
+---
+
 ## External Tools
 
 Skills call these CLI tools when available. Install them separately.
@@ -103,6 +148,7 @@ Skills call these CLI tools when available. Install them separately.
 | `acli`               | `/plan`, `/refine`, `/report`     | Atlassian CLI for Jira and Confluence |
 | `uv` / `poetry`      | `/branch`, `/check`               | Python dependency sync                |
 | `wandb` (Python SDK) | `/experiment-review`              | W&B run metrics                       |
+| `yq`                 | `make deploy-agents`              | YAML frontmatter parsing/resolution   |
 
 ---
 
