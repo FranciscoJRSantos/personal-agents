@@ -3,7 +3,7 @@
 ## Quick Start
 ```bash
 git clone <repo>
-make deploy   # Deploys skills, agents, and hooks to ~/.claude/ and ~/.gemini/
+make deploy   # Deploys skills, agents, and hooks to ~/.claude/, ~/.gemini/, and opencode
 ```
 
 ## Architecture
@@ -62,8 +62,9 @@ Skills pass context to each other through files in `.agents/artifacts/`:
 | `make deploy` | Sync to Claude, Gemini + hooks + agents |
 | `make deploy-claude` | Sync to `~/.claude/skills/` only |
 | `make deploy-gemini` | Sync to `~/.gemini/skills/` only |
-| `make deploy-hooks` | Deploy hooks scripts + merge into `~/.claude/settings.json` |
 | `make deploy-agents` | Sync agents to `~/.agents/` (resolves categories first) |
+| `make deploy-opencode` | Sync only `.md` agents to `~/.config/opencode/agents/` |
+| `make deploy-hooks` | Deploy hooks scripts + merge into `~/.claude/settings.json` |
 | `make deploy-dry` | Preview changes without writing |
 | `make pull` | Pull changes from deployed locations back into repo |
 | `make list-skills` | List all global skills |
@@ -95,7 +96,10 @@ category: quick
 
 ## OpenCode Compatibility
 
-OpenCode reads agents from `~/.config/opencode/agents/`.
+OpenCode can use custom agents defined in `~/.config/opencode/agents/` as markdown files. `make deploy-opencode` deploys only the `.md` agent files (excluding `memory/` and `partials/` directories) to this location.
 
-1. Run `make setup` once to create the symlink from `~/.config/opencode/agents` to `~/.agents/`.
-2. Ensure `categories.json` uses model IDs in the `provider/model-id` format (e.g., `github-copilot/claude-sonnet-4.6`). Bare model names like `sonnet` are not supported by OpenCode.
+- Agents must have YAML frontmatter with `description` and `mode` fields
+- `category:` in frontmatter is resolved to `model:` via `categories.json`
+- Subagents are invoked with `@agent-name` in the TUI
+
+Run `make setup-opencode` once to create the directory, or let `make deploy-opencode` create it automatically.

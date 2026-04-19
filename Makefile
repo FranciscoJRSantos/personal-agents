@@ -11,14 +11,14 @@ AGENTS_SRC           := agents
 AGENTS_PARTIALS      := agents/partials
 AGENTS_DIR           ?= $(HOME)/.agents
 CLAUDE_AGENTS_LINK   ?= $(HOME)/.claude/agents
-OPENCODE_AGENTS_LINK ?= $(HOME)/.config/opencode/agents
+OPENCODE_AGENTS_DIR  ?= $(HOME)/.config/opencode/agents
 
 CATEGORIES_FILE      := categories.json
 
-.PHONY: deploy deploy-claude deploy-gemini deploy-agents deploy-hooks deploy-projects pull pull-claude pull-agents pull-hooks pull-projects deploy-dry list-skills lint-skills list-agents lint-agents list-hooks setup
+.PHONY: deploy deploy-claude deploy-gemini deploy-agents deploy-opencode deploy-hooks deploy-projects pull pull-claude pull-agents pull-hooks pull-projects deploy-dry list-skills lint-skills list-agents lint-agents list-hooks setup setup-opencode
 
 ## Deploy everything
-deploy: deploy-claude deploy-gemini deploy-agents deploy-hooks
+deploy: deploy-claude deploy-gemini deploy-agents deploy-opencode deploy-hooks
 
 ## Global skills → ~/.claude/skills/
 deploy-claude:
@@ -36,6 +36,31 @@ deploy-agents:
 	@if [ -f "$(CATEGORIES_FILE)" ]; then \
 		echo "Resolving agent categories in $(AGENTS_DIR)..."; \
 		for f in $$(find $(AGENTS_DIR) -name "*.md"); do \
+			[ -e "$$f" ] || continue; \
+			fm=$$(sed -n '1,/^---$$/p' "$$f" 2>/dev/null); \
+			[ -n "$$fm" ] || continue; \
+			if ! echo "$$fm" | grep -q "^---$$"; then continue; fi; \
+			agent=$$(basename "$$f" .md); \
+			category=$$(echo "$$fm" | yq eval 'select(di==0) | .category // ""' | grep -v '^null$$' | head -1); \
+			if [ -n "$$category" ] && [ "$$category" != '""' ]; then \
+				model=$$(jq -r '.["'"$$category"'"].model // empty' "$(CATEGORIES_FILE)"); \
+				if [ -n "$$model" ]; then \
+					echo "  $$agent: category=$$category → model=$$model"; \
+					sed -i 's|^category:.*|model: '"$$model"'|' "$$f"; \
+				else \
+					echo "WARN  $$agent: category '$$category' not found in categories.json"; \
+				fi \
+			fi \
+		done; \
+	fi
+
+## Agents → ~/.config/opencode/agents/ (only .md files, category → model)
+deploy-opencode: setup-opencode
+	@echo "Deploying agents to $(OPENCODE_AGENTS_DIR)..."
+	rsync -av --delete --include='*.md' --exclude='*' $(AGENTS_SRC)/ $(OPENCODE_AGENTS_DIR)/
+	@if [ -f "$(CATEGORIES_FILE)" ]; then \
+		echo "Resolving agent categories in $(OPENCODE_AGENTS_DIR)..."; \
+		for f in $$(find $(OPENCODE_AGENTS_DIR) -name "*.md" 2>/dev/null); do \
 			[ -e "$$f" ] || continue; \
 			fm=$$(sed -n '1,/^---$$/p' "$$f" 2>/dev/null); \
 			[ -n "$$fm" ] || continue; \
@@ -123,7 +148,7 @@ lint-agents:
 	$$ok
 
 
-## One-time setup: create ~/.agents/ and symlink Claude Code + opencode to it
+## One-time setup: create ~/.agents/ and symlink Claude Code to it (opencode uses native agents only)
 setup:
 	@echo "=== Setting up canonical agents directory ==="
 	mkdir -p $(AGENTS_DIR)
@@ -136,16 +161,17 @@ setup:
 		ln -sfn $(AGENTS_DIR) $(CLAUDE_AGENTS_LINK) && \
 		echo "LINK  $(CLAUDE_AGENTS_LINK) → $(AGENTS_DIR)"; \
 	fi
-	@mkdir -p $(HOME)/.config/opencode
-	@if [ -L $(OPENCODE_AGENTS_LINK) ] && [ "$$(readlink $(OPENCODE_AGENTS_LINK))" = "$(AGENTS_DIR)" ]; then \
-		echo "OK    $(OPENCODE_AGENTS_LINK) → $(AGENTS_DIR) (already correct)"; \
-	elif [ -e $(OPENCODE_AGENTS_LINK) ] && [ ! -L $(OPENCODE_AGENTS_LINK) ]; then \
-		echo "WARN  $(OPENCODE_AGENTS_LINK) exists and is not a symlink — remove it first (see CLAUDE.md)"; \
-	else \
-		ln -sfn $(AGENTS_DIR) $(OPENCODE_AGENTS_LINK) && \
-		echo "LINK  $(OPENCODE_AGENTS_LINK) → $(AGENTS_DIR)"; \
-	fi
+	@$(MAKE) setup-opencode
 	@echo "=== Done. Run 'make deploy-agents' to populate ~/.agents/ ==="
+
+## One-time setup: create ~/.config/opencode/agents/ (no symlink)
+setup-opencode:
+	@if [ -L $(OPENCODE_AGENTS_DIR) ]; then \
+		echo "Removing stale opencode symlink $(OPENCODE_AGENTS_DIR)"; \
+		rm $(OPENCODE_AGENTS_DIR); \
+	fi
+	@mkdir -p $(OPENCODE_AGENTS_DIR)
+	@echo "Created $(OPENCODE_AGENTS_DIR)"
 
 ## Validate SKILL.md files before deploying
 lint-skills:
