@@ -5,7 +5,7 @@ description: >
   when asked to "review my code", "check my changes", "deep review", or when the
   /review skill needs file-heavy reading done in isolation to avoid consuming main
   context. Returns structured findings grouped by severity. Does not write artifacts.
-model: sonnet
+category: deep
 mode: subagent
 permission:
   edit: deny

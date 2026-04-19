@@ -7,7 +7,7 @@ description: >
   artifact", "check the plan quality", "validate before I ship", "does my plan answer
   the ticket", "check artifact completeness", or wants a quality check before proceeding.
   Returns VERIFIED or ISSUES FOUND with a specific gap list. Does not write artifacts.
-model: sonnet
+category: quick
 mode: subagent
 permission:
   edit: deny

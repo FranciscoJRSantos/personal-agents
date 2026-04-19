@@ -92,3 +92,10 @@ category: quick
 ```
 
 `make deploy-agents` resolves `category:` → `model:` before syncing to `~/.agents/`.
+
+## OpenCode Compatibility
+
+OpenCode reads agents from `~/.config/opencode/agents/`.
+
+1. Run `make setup` once to create the symlink from `~/.config/opencode/agents` to `~/.agents/`.
+2. Ensure `categories.json` uses model IDs in the `provider/model-id` format (e.g., `github-copilot/claude-sonnet-4.6`). Bare model names like `sonnet` are not supported by OpenCode.

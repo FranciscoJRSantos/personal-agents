@@ -8,7 +8,7 @@ description: >
   artifacts stale", "ready to ship?", or wants a pre-flight integrity check before
   merging. Returns a health table and a VALID / ISSUES FOUND verdict. Does not write
   artifacts.
-model: sonnet
+category: quick
 mode: subagent
 permission:
   edit: deny

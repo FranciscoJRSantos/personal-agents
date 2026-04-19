@@ -6,7 +6,7 @@ description: >
   "analyze this ticket", "what's unclear in PROJ-123", "risks before I plan", or
   before running /plan on a ticket with a complex description. Returns bullet-point
   findings. Does not write artifact files.
-model: sonnet
+category: quick
 mode: subagent
 permission:
   edit: deny

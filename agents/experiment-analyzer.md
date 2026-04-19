@@ -6,7 +6,7 @@ description: >
   by the numbers. Delegate here when asked to "analyze experiment results", "compare
   variants", "check if the experiment passed", or before running /report. Returns a
   structured analysis. Does not write artifact files.
-model: sonnet
+category: deep
 mode: subagent
 permission:
   edit: deny

@@ -1,22 +1,26 @@
 {
   "quick": {
-    "model": "haiku",
+    "model": "github-copilot/claude-haiku-4.5",
     "description": "Fast, trivial tasks"
   },
   "deep": {
-    "model": "sonnet",
+    "model": "github-copilot/claude-sonnet-4.6",
     "description": "Complex reasoning, thorough research"
   },
   "heavy": {
-    "model": "opus",
+    "model": "github-copilot/claude-opus-4.6",
     "description": "Heavy computation, complex architectures"
   },
-  "visual-engineering": {
-    "model": "gemini-2.0-flash",
-    "description": "Frontend, UI/UX, design tasks"
-  },
   "writing": {
-    "model": "haiku",
+    "model": "github-copilot/claude-haiku-4.5",
     "description": "Documentation and prose"
+  },
+  "code": {
+    "model": "github-copilot/gpt-5.2-codex",
+    "description": "Code generation and editing"
+  },
+  "explore": {
+    "model": "github-copilot/gemini-2.5-pro",
+    "description": "Codebase exploration and understanding"
   }
 }

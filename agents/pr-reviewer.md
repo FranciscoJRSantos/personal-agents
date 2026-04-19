@@ -6,7 +6,7 @@ description: >
   MR". Distinct from /review which reviews your own branch. Fetches the diff via
   glab, reads relevant files for context, and returns structured findings grouped
   by severity. Does not write artifact files.
-model: sonnet
+category: deep
 mode: subagent
 permission:
   edit: deny

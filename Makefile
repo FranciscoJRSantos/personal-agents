@@ -35,27 +35,24 @@ deploy-agents:
 	rsync -av --delete $(AGENTS_SRC)/ $(AGENTS_DIR)/
 	@if [ -f "$(CATEGORIES_FILE)" ]; then \
 		echo "Resolving agent categories in $(AGENTS_DIR)..."; \
-		for f in $(AGENTS_DIR)/*.md $(AGENTS_DIR)/**/*.md; do \
+		for f in $$(find $(AGENTS_DIR) -name "*.md"); do \
 			[ -e "$$f" ] || continue; \
-			agent=$$(basename "$$f" .md); \
 			fm=$$(sed -n '1,/^---$$/p' "$$f" 2>/dev/null); \
 			[ -n "$$fm" ] || continue; \
-			category=$$(echo "$$fm" | yq '.category // ""' | grep -v '^null$$' | head -1); \
+			if ! echo "$$fm" | grep -q "^---$$"; then continue; fi; \
+			agent=$$(basename "$$f" .md); \
+			category=$$(echo "$$fm" | yq eval 'select(di==0) | .category // ""' | grep -v '^null$$' | head -1); \
 			if [ -n "$$category" ] && [ "$$category" != '""' ]; then \
 				model=$$(jq -r '.["'"$$category"'"].model // empty' "$(CATEGORIES_FILE)"); \
 				if [ -n "$$model" ]; then \
 					echo "  $$agent: category=$$category → model=$$model"; \
-					sed -i 's/^model:.*/model: '"$$model"'/' "$$f"; \
+					sed -i 's|^category:.*|model: '"$$model"'|' "$$f"; \
 				else \
 					echo "WARN  $$agent: category '$$category' not found in categories.json"; \
 				fi \
 			fi \
 		done; \
 	fi
-
-## Resolve agent categories to models before deploying (DEPRECATED - logic moved to deploy-agents)
-resolve-agents:
-	@echo "DEPRECATED: resolve-agents logic is now part of deploy-agents (resolving at destination)"
 
 ## Pull local changes back into the repository
 
@@ -100,8 +97,8 @@ lint-agents:
 			continue; \
 		fi; \
 		fm=$$(sed -n '1,/^---$$/p' "$$f"); \
-		name=$$(echo "$$fm" | yq '.name // ""' | grep -v '^null$$' | head -1); \
-		description=$$(echo "$$fm" | yq '.description // ""' | grep -v '^null$$' | head -1); \
+		name=$$(echo "$$fm" | yq eval 'select(di==0) | .name // ""' | grep -v '^null$$' | head -1); \
+		description=$$(echo "$$fm" | yq eval 'select(di==0) | .description // ""' | grep -v '^null$$' | head -1); \
 		if [ -z "$$name" ] || [ "$$name" = '""' ]; then \
 			echo "FAIL  $$agent: frontmatter missing 'name:' field"; \
 			ok=false; \
@@ -110,10 +107,10 @@ lint-agents:
 			echo "FAIL  $$agent: frontmatter missing 'description:' field"; \
 			ok=false; \
 		fi; \
-		if ! echo "$$fm" | yq -e '.permission' >/dev/null 2>&1; then \
+		if ! echo "$$fm" | yq eval -e 'select(di==0) | .permission' >/dev/null 2>&1; then \
 			echo "WARN  $$agent: missing 'permission:' block (needed for opencode)"; \
 		fi; \
-		category=$$(echo "$$fm" | yq '.category // ""' | grep -v '^null$$' | head -1); \
+		category=$$(echo "$$fm" | yq eval 'select(di==0) | .category // ""' | grep -v '^null$$' | head -1); \
 		if [ -n "$$category" ] && [ "$$category" != '""' ]; then \
 			if ! jq -e '.["'"$$category"'"]' "$(CATEGORIES_FILE)" >/dev/null 2>&1; then \
 				echo "WARN  $$agent: category '$$category' not defined in categories.json"; \
