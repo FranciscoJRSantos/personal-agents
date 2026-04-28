@@ -129,7 +129,9 @@ Skills write and read files under `.agents/artifacts/` to pass context between s
 | Agent | Use case |
 |---|---|
 | `code-reviewer` | Deep isolated review of own branch diff — called by `/review` or standalone |
+| `explorer` | Fast read-only codebase reconnaissance — where is X, find files, trace data flow |
 | `experiment-analyzer` | Analyze ML experiment artifacts vs plan thresholds before `/report` |
+| `fixer` | Fast bounded implementation for scoped tasks — tests, stub implementations, diffs |
 | `pipeline-validator` | Check artifact chain integrity (staleness, TBDs, missing artifacts) before /ship |
 | `pr-reviewer` | Review an incoming teammate MR via `glab` (distinct from self-review) |
 | `ticket-analyzer` | Surface requirements gaps and risks in a Jira ticket before `/plan` |
@@ -155,7 +157,7 @@ Hooks are shell scripts that fire at Claude Code lifecycle events. This repo dep
 | `post-compact-todo-restore.sh` | `PostCompact` | Restores TODO state after compaction |
 | `write-existing-file-guard.sh` | `PreToolUse` (Write) | Warns when writing to existing files |
 | `auto-lint-on-edit.sh` | `PostToolUse` (Write/Edit) | Runs lint on edited JS/TS files |
-| `session-context-loader.sh` | `SessionStart` (resume) | Loads session context on resume |
+| `session-context-loader.sh` | `SessionStart` (resume) | Loads session context on resume (impl-progress, memory, codemap state) |
 
 Deploy: `make deploy-hooks`. List: `make list-hooks`. Pull: `make pull-hooks`.
 

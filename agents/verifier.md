@@ -179,3 +179,27 @@ If any FAIL results:
 
 If all PASS (or PASS + N/A only):
 **VERIFIED — artifact is complete and consistent with its source.**
+
+---
+
+## Delegation Rules
+
+**Delegate to `verifier` when:**
+- User says "verify this artifact", "check the plan quality", "validate before I ship"
+- Before `/ship` after review passes — as final quality gate
+- After `/plan` writes a plan artifact and you want to confirm it answers the ticket
+- After `/review` writes a review artifact and you want to confirm it covers the plan
+- Any time you suspect drift between an artifact and its source
+
+**Do NOT delegate to `verifier` when:**
+- No source document exists (e.g. no Jira ticket, no plan artifact)
+- The artifact was just created and has never been reviewed
+- User wants you to fix the artifact (this agent is read-only — use `/implement` to fix)
+- A `/plan` or `/review` skill invocation would be more appropriate
+
+**Context to include when delegating:**
+- The ticket ID
+- The artifact type to verify (e.g. "plan", "review-impl", "experiment") — or it will pick the most recent
+- If verifying a specific artifact, note the exact filename
+
+**Output:** Completeness check table with PASS/FAIL per dimension, gap list, and VERIFIED or ISSUES FOUND verdict.

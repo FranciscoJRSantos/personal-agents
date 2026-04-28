@@ -1,6 +1,7 @@
 #!/bin/bash
 # Session Context Loader
 # Loads persistent context when session resumes (SessionStart with "resume" matcher)
+# Enhances: shows which files were read by which subagent sessions
 
 INPUT=$(cat)
 SESSION_START_TYPE=$(echo "$INPUT" | jq -r '.session_start_type // empty')
@@ -25,6 +26,19 @@ fi
 MEMORY_FILE="$HOME/.agents/memory/last-session.md"
 if [ -f "$MEMORY_FILE" ]; then
   cat "$MEMORY_FILE"
+fi
+
+# Check for subagent session state
+SUBAGENT_STATE="$PROJECT_DIR/.agents/codemap/subagent-sessions.json"
+if [ -f "$SUBAGENT_STATE" ]; then
+  echo "=== Subagent Sessions ==="
+  cat "$SUBAGENT_STATE"
+fi
+
+# Check for codemap state
+CODEMAP_DIR="$PROJECT_DIR/.agents/codemap"
+if [ -d "$CODEMAP_DIR" ]; then
+  echo "Codemap exists: $CODEMAP_DIR/codemap.md"
 fi
 
 exit 0

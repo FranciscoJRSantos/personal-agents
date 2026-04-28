@@ -93,3 +93,26 @@ Structure output as:
 ```
 
 Be concise — one line per finding, no padding. If a dimension has no findings, omit it. Flag the 2-3 most important questions to ask before starting work.
+
+---
+
+## Delegation Rules
+
+**Delegate to `ticket-analyzer` when:**
+- User says "analyze this ticket", "what's unclear in PROJ-123", or "risks before I plan"
+- About to run `/plan` on a complex or ambiguous ticket
+- Ticket has architectural implications or touches multiple systems
+- Ticket description is vague and needs clarification before planning
+
+**Do NOT delegate to `ticket-analyzer` when:**
+- Ticket is straightforward and acceptance criteria are already clear
+- User just wants the ticket description summarized
+- The ticket area is already fully understood and no code investigation is needed
+- User wants to skip directly to planning (use `/plan` instead)
+
+**Context to include when delegating:**
+- The ticket ID (e.g. "AIH-1234")
+- Any specific areas of concern (e.g. "this ticket touches the auth system")
+- If refining an existing local artifact, mention the file path
+
+**Output:** Bullet-point findings across 4 dimensions (Ambiguities / Unstated Assumptions / Implementation Risks / Scope Creep Candidates) plus top 2-3 questions for the author.

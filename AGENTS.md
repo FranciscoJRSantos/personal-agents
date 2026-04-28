@@ -37,6 +37,7 @@ Skills pass context to each other through files in `.agents/artifacts/`:
 |---|---|---|
 | `branch` | `/branch TICKET` | Create feature branch, sync deps, load plan |
 | `check` | `/check` | Run lint + type check + tests (stack-aware) |
+| `codemap` | `/codemap` | Generate hierarchical codebase architecture map |
 | `gitlab` | `/gitlab` | MRs, pipelines, issues via `glab` |
 | `plan` | `/plan TICKET` | Type-aware implementation plan → Jira comment + artifact |
 | `refine` | `/refine [TICKET]` | Interactively refine a Jira ticket, one topic at a time |
@@ -45,11 +46,18 @@ Skills pass context to each other through files in `.agents/artifacts/`:
 | `ship` | `/ship` | Gate on review → check → commit → push → MR |
 | `test` | `/test` | Generate tests from plan acceptance criteria + diff |
 
+## Repository Map
+
+A hierarchical codemap of the codebase is available at `.agents/codemap/codemap.md`.
+Run `/codemap` to regenerate it after structural changes.
+
 ## Typical Workflow
 
 ```
-/branch TICKET → implement → /check → /review → /test → /ship
+/branch TICKET → /plan → /implement → /check → /review → /test → /ship
 ```
+
+For unfamiliar codebases, start with `/codemap` to understand the structure first.
 
 ## Adding a Skill
 1. Create `skills/global/<name>/SKILL.md`

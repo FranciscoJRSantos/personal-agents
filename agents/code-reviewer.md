@@ -51,3 +51,27 @@ For each changed file, read the full file (not just the diff) if it touches busi
 Load and apply the shared review rules, specialist frames, and output format from `~/.agents/partials/review-rules.md`.
 
 Assess the implementation against the acceptance criteria from the plan artifact. Report what the code shows — do not soften findings.
+
+---
+
+## Delegation Rules
+
+**Delegate to `code-reviewer` when:**
+- Diff is large (>500 lines) and touches multiple modules
+- Review skill needs file-heavy reading done in isolation
+- Deep isolated code review is explicitly requested
+- Changes span security-sensitive areas and need thorough context review
+
+**Do NOT delegate to `code-reviewer` when:**
+- Diff is small (<100 lines) and can be reviewed in main context
+- Changes are purely stylistic with no logic impact
+- User wants a quick verbal summary rather than structured findings
+- A project-level `/review` with shared rules is already being used
+
+**Context to include when delegating:**
+- The ticket ID and any acceptance criteria from the plan artifact
+- Any project-specific review rules found in `.agents/review.md`
+- The base branch (main, origin/main, or master — detect automatically)
+- If changes touch a specific area (e.g. auth, data flow), note that area explicitly
+
+**Output:** Structured findings grouped by severity (Critical / Warning / Suggestion), with GATE: BLOCKED or GATE: CLEARED.

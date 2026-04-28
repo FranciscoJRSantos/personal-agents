@@ -159,3 +159,26 @@ If any FAIL results appear:
 
 If only PASS and WARN results (no FAIL):
 **VALID — all required artifacts present and healthy. Safe to proceed to /ship.**
+
+---
+
+## Delegation Rules
+
+**Delegate to `pipeline-validator` when:**
+- User says "validate pipeline", "check artifacts", "are my artifacts stale", or "ready to ship?"
+- Before `/ship` runs — as a pre-flight integrity check
+- After `/review` produces a `clean` status and before committing
+- Any time artifacts may have diverged from the current branch state
+
+**Do NOT delegate to `pipeline-validator` when:**
+- No ticket ID can be determined (branch has no ticket number and no artifacts found)
+- A simple `git status` would suffice (no artifacts have been created yet)
+- User is asking about CI/pipeline status (use `/gitlab` instead)
+- Artifacts were just created and haven't had a chance to become stale
+
+**Context to include when delegating:**
+- The ticket ID when known (can be derived from branch name automatically)
+- If no ticket ID: the most recent artifact prefix (the validator will list options)
+- No additional context needed — it reads all relevant files directly
+
+**Output:** Health table with VALID or ISSUES FOUND verdict and specific issue list.

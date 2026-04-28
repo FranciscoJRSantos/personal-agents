@@ -109,6 +109,19 @@ if [ -n "$TICKET" ]; then
 fi
 ```
 
+### 2e. Codemap (if exists)
+
+```bash
+CODEMAP=".agents/codemap/codemap.md"
+if [ -f "$CODEMAP" ]; then
+  echo "=== Codemap ==="
+  echo "  $CODEMAP exists — run /codemap to regenerate if stale"
+else
+  echo "=== Codemap ==="
+  echo "  no codemap found — run /codemap to generate"
+fi
+```
+
 ---
 
 ## Step 3: Present the Dashboard

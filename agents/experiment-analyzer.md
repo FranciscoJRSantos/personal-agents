@@ -110,3 +110,26 @@ If **Supported by numbers** is No or Partial:
 
 If **Supported by numbers** is Yes:
 **GATE: CLEARED — Recommendation supported by metrics. Safe to proceed to /report.**
+
+---
+
+## Delegation Rules
+
+**Delegate to `experiment-analyzer` when:**
+- User says "analyze experiment results", "compare variants", or "check if the experiment passed"
+- Before running `/report` to validate the recommendation
+- After `/experiment` writes a new experiment artifact and you want to verify it
+- Cross-variant comparison is needed to pick a winning model
+
+**Do NOT delegate to `experiment-analyzer` when:**
+- No experiment artifact exists yet (no results to analyze)
+- User just wants to see raw W&B runs (use `/experiment-review` instead)
+- Only one variant was tested and no comparison is needed
+- Metrics are clearly failing and the decision is obvious without analysis
+
+**Context to include when delegating:**
+- The ticket ID (e.g. "AIH-1234") so it can find the experiment artifact
+- If the user specifies a particular experiment run (e.g. "run b3sgztcq"), pass that
+- Any specific questions about the experiment (e.g. "is variant B better than A?")
+
+**Output:** Structured analysis with success criteria scorecard, variant comparison, and GATE: CLEARED or GATE: BLOCKED verdict.

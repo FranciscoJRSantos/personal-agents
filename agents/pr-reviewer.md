@@ -56,3 +56,26 @@ Load and apply the shared review rules, specialist frames, and output format fro
 - Always flag breaking changes to public interfaces without version bumping or deprecation notice.
 
 Assess the diff independently; use the description only to verify that claimed intent matches actual changes. Report what the code shows — do not soften findings.
+
+---
+
+## Delegation Rules
+
+**Delegate to `pr-reviewer` when:**
+- User says "review !123", "look at this MR", "review a teammate's PR"
+- A teammate's merge request needs review before merging
+- Breaking changes to public APIs are suspected and need careful review
+- You want independent verification of an incoming change
+
+**Do NOT delegate to `pr-reviewer` when:**
+- Reviewing your own branch (use `/review` and `code-reviewer` instead)
+- User wants a quick verbal opinion rather than structured findings
+- MR is very small (one file, minor change) and doesn't warrant full review
+- The MR is from a trusted author and changes are obviously safe
+
+**Context to include when delegating:**
+- The MR number (e.g. !123 or 123) or the source branch name
+- If the MR touches a specific area (e.g. "it's a database migration"), mention that
+- Any specific concerns to investigate (e.g. "check if the auth changes are safe")
+
+**Output:** Structured findings grouped by severity, with findings about breaking changes on public interfaces.
