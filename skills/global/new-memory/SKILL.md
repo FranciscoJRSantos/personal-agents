@@ -2,7 +2,7 @@
 name: new-memory
 description: >
   Save a memory to the model-agnostic memory store at ~/.agents/memory/ (global) or
-  ./agents/memory/ (project). Memories persist across sessions and are readable by any
+  ./.agents/memory/ (project). Memories persist across sessions and are readable by any
   model with access to ~/.agents/. Use this skill whenever the user says "remember this",
   "save this to memory", "add a memory", "/new-memory", or wants to persist a fact,
   preference, feedback, or project context beyond session scope.
@@ -16,7 +16,7 @@ accessible to any model (Claude, Gemini, opencode, etc.).
 
 Two destinations:
 - `~/.agents/memory/` — global memories (user preferences, cross-project feedback)
-- `./agents/memory/` — project-scoped memories (project goals, conventions, context)
+- `./.agents/memory/` — project-scoped memories (project goals, conventions, context)
 
 ---
 
@@ -72,7 +72,7 @@ Show both to the user and offer to adjust before proceeding.
 Ask:
 
 > "Should this be global (`~/.agents/memory/` — applies everywhere) or project-scoped
-> (`./agents/memory/` — only for this repo)?"
+> (`./.agents/memory/` — only for this repo)?"
 
 Guidance: user preferences and cross-project feedback → global. Project goals, decisions,
 deadlines → project.
@@ -92,7 +92,7 @@ Examples: `user_background`, `feedback_response_style`, `project_agents_goal`.
 Check whether a file with this slug already exists:
 
 ```bash
-TARGET=~/.agents/memory   # or ./agents/memory depending on Step 4
+TARGET=~/.agents/memory   # or ./.agents/memory depending on Step 4
 ls "$TARGET/<slug>.md" 2>/dev/null
 ```
 

@@ -32,7 +32,7 @@ This action is irreversible — the human gate at Step 3 is mandatory.
 
 ```bash
 GLOBAL_MEM=~/.agents/memory/MEMORY.md
-PROJECT_MEM=./agents/memory/MEMORY.md
+PROJECT_MEM=./.agents/memory/MEMORY.md
 
 echo "=== Global Memory Index ==="
 [ -f "$GLOBAL_MEM" ] && cat "$GLOBAL_MEM" || echo "(empty)"
@@ -52,7 +52,7 @@ For each match, load the full memory file to show the user what will be deleted:
 
 ```bash
 cat ~/.agents/memory/<slug>.md    # for global matches
-cat ./agents/memory/<slug>.md     # for project matches
+cat ./.agents/memory/<slug>.md     # for project matches
 ```
 
 If no matches found:
@@ -82,7 +82,7 @@ For each confirmed entry:
 
 ```bash
 rm ~/.agents/memory/<slug>.md     # global
-rm ./agents/memory/<slug>.md      # project
+rm ./.agents/memory/<slug>.md      # project
 echo "Deleted: <path>"
 ```
 

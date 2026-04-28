@@ -33,7 +33,7 @@ Parse optional flags from the invocation:
 | Flag | Effect |
 |------|--------|
 | `--global` | Show only `~/.agents/memory/MEMORY.md` |
-| `--project` | Show only `./agents/memory/MEMORY.md` |
+| `--project` | Show only `./.agents/memory/MEMORY.md` |
 | `--type <type>` | Filter to one section: `user`, `feedback`, `project`, or `reference` |
 | _(none)_ | Show both indices in full |
 
@@ -43,7 +43,7 @@ Parse optional flags from the invocation:
 
 ```bash
 GLOBAL_MEM=~/.agents/memory/MEMORY.md
-PROJECT_MEM=./agents/memory/MEMORY.md
+PROJECT_MEM=./.agents/memory/MEMORY.md
 
 # Respect --global / --project flags
 [ -f "$GLOBAL_MEM" ] && cat "$GLOBAL_MEM"
@@ -69,7 +69,7 @@ Present the content with scope labels:
 ## Global  (~/.agents/memory/)
 <content of global MEMORY.md, or "(empty — use /new-memory to save the first entry)">
 
-## Project  (./agents/memory/)
+## Project  (./.agents/memory/)
 <content of project MEMORY.md, or "(empty)">
 
 ───────────────────────────────────────────────

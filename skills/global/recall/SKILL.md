@@ -32,7 +32,7 @@ index (~50–150 tokens) to assess relevance, then fetch only the matching full 
 
 ```bash
 GLOBAL_MEM=~/.agents/memory/MEMORY.md
-PROJECT_MEM=./agents/memory/MEMORY.md
+PROJECT_MEM=./.agents/memory/MEMORY.md
 
 echo "=== Global Memory Index ==="
 [ -f "$GLOBAL_MEM" ] && cat "$GLOBAL_MEM" || echo "(no global memory index found)"
@@ -50,7 +50,7 @@ From the loaded index content, identify entries where:
 - Any `#tag` in the query exactly matches a tag listed in the entry
 
 Build two lists: global matches (path `~/.agents/memory/<slug>.md`) and project matches
-(path `./agents/memory/<slug>.md`).
+(path `./.agents/memory/<slug>.md`).
 
 If the query is empty or matches everything, skip to Step 4 and display the index
 summaries only — do not load all files.
@@ -66,7 +66,7 @@ For each matched entry, read the full memory file:
 cat ~/.agents/memory/<slug>.md
 
 # Project match
-cat ./agents/memory/<slug>.md
+cat ./.agents/memory/<slug>.md
 ```
 
 ---
