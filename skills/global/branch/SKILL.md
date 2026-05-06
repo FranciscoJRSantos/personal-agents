@@ -51,7 +51,7 @@ git fetch origin
 Follow the project's naming convention:
 
 - **AIH repos**: branch name is the ticket ID only (e.g., `AIH-1234`)
-  - Convention from CLAUDE.md: `Branch names: AIH-xxxx (ticket ID only, no description suffix)`
+  - Convention from AGENTS.md: `Branch names: AIH-xxxx (ticket ID only, no description suffix)`
 - **Other repos**: ask the user if unsure, or use `feature/<TICKET-ID>`
 
 ```bash

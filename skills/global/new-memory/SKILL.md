@@ -12,7 +12,7 @@ description: >
 # New Memory Skill
 
 Saves a memory to the model-agnostic store so it persists across sessions and is
-accessible to any model (Claude, Gemini, opencode, etc.).
+accessible to any model.
 
 Two destinations:
 - `~/.agents/memory/` — global memories (user preferences, cross-project feedback)

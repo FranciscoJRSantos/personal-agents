@@ -1,6 +1,6 @@
 # Project Review Rules
 #
-# Copy this file to .claude/review.md in your project root.
+# Copy this file to .agents/review.md in your project root.
 # The /review skill reads it and applies these rules on top of its base checks.
 # Rules here EXTEND and OVERRIDE the defaults — they don't replace them.
 

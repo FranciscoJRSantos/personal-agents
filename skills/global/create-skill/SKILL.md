@@ -1,7 +1,7 @@
 ---
 name: create-skill
 description: >
-  Guide the creation of a new skill or agent using the 10 research-backed Claude Code
+  Guide the creation of a new skill or agent using the 10 research-backed OpenCode
   principles as a quality checklist. Produces a ready-to-lint SKILL.md or agent .md
   file. Use this skill whenever the user says "create a skill", "new skill", "add an
   agent", "build a slash command", "/create-skill", or wants to author a new workflow
@@ -23,7 +23,7 @@ producing the draft. Nothing is written until the user explicitly approves.
   separate actions — writing before approval means the user cannot course-correct the
   structure cheaply.
 - Always run lint after writing BECAUSE a file that fails `make lint-skills` or
-  `make lint-agents` is not deployed and will not show up in Claude Code.
+  `make lint-agents` is not deployed and will not show up in OpenCode.
 - Never embed vocabulary routing frames in skills BECAUSE skills run in the main
   conversation and should stay thin; only agents need specialist frames since they
   are purpose-built for isolated analysis.

@@ -1,6 +1,6 @@
 # personal-agents
 
-Research-backed agent skills and subagents for software engineering and ML research workflows. Each skill is a slash command that runs inside Claude Code or OpenCode.
+Research-backed agent skills and subagents for software engineering and ML research workflows. Each skill is a slash command that runs inside OpenCode.
 
 ## Workflows
 
@@ -30,11 +30,11 @@ Research-backed agent skills and subagents for software engineering and ML resea
 
 ```bash
 git clone <repo>
-make setup    # one-time: create ~/.agents/ and symlink Claude Code + OpenCode to it
-make deploy   # sync skills, agents, and hooks to all destinations
+make setup    # one-time: create ~/.agents/ and ~/.config/opencode/ directories
+make deploy   # sync skills and agents to OpenCode
 ```
 
-`make deploy` rsyncs `skills/global/` to `~/.claude/skills/` and `~/.gemini/skills/`. Agents are synced to `~/.agents/` (symlinked from `~/.claude/agents/` and `~/.config/opencode/agents/`). Hooks are deployed to `~/.claude/hooks/` and merged into `~/.claude/settings.json`.
+`make deploy` rsyncs `skills/global/` to `~/.config/opencode/skills/` and agents to `~/.config/opencode/agents/` (plus `~/.agents/` for canonical partials and memory).
 
 ---
 
@@ -55,7 +55,7 @@ make deploy   # sync skills, agents, and hooks to all destinations
 | `/experiment`        | `/experiment`                 | Capture ML experiment results into artifact for `/report`               | ML          |
 | `/experiment-review` | `/experiment-review [run-id]` | Pull W&B runs, display metrics, append to EXPERIMENTS.md                | ML          |
 | `/report`            | `/report`                     | Publish ML experiment report to Confluence                              | ML          |
-| `/learn`             | `/learn [rule]`               | Capture a session correction into CLAUDE.md or .agents/conventions.md   | Any         |
+| `/learn`             | `/learn [rule]`               | Capture a session correction into AGENTS.md or .agents/conventions.md   | Any         |
 | `/adr`               | `/adr [decision]`             | Record architecture decisions with context, rationale, and alternatives | Any         |
 | `/standup`           | `/standup [range]`            | Progress summary from git, MRs, Jira                                    | Any         |
 | `/status`            | `/status`                     | Show current state and recommend the next workflow step                 | Any         |
@@ -93,29 +93,22 @@ Skills pass context to each other via `.agents/artifacts/`:
 
 ---
 
-## Hooks
+## Plugins
 
-Hooks are shell scripts that fire at Claude Code lifecycle events. They live in `hooks/scripts/` and are deployed to `~/.claude/hooks/`. Their event configuration is merged into `~/.claude/settings.json` on `make deploy-hooks`.
+OpenCode plugins fire on lifecycle events. They live in `plugins/` and are registered in `~/.config/opencode/opencode.json`.
 
-| Hook | Event | Purpose |
-|------|-------|---------|
-| `compaction-todo-preserver.sh` | `PreCompact` | Saves in-progress TODO/impl state before context compaction |
-| `post-compact-todo-restore.sh` | `PostCompact` | Restores saved state after compaction so work isn't lost |
-| `write-existing-file-guard.sh` | `PreToolUse` (Write) | Warns when a Write targets an already-existing file |
-| `auto-lint-on-edit.sh` | `PostToolUse` (Write/Edit) | Runs project linter on edited JS/TS files |
-| `session-context-loader.sh` | `SessionStart` (resume) | Injects impl-progress context when a session resumes |
-
-```bash
-make deploy-hooks   # deploy scripts + merge config into ~/.claude/settings.json
-make list-hooks     # list deployed hook scripts
-make pull-hooks     # pull changes back from ~/.claude/hooks/ into the repo
-```
+| Plugin | Event | Purpose |
+|--------|-------|---------|
+| `auto-lint.ts` | `tool.execute.after` (Write) | Runs project linter on edited JS/TS files |
+| `compaction.ts` | `experimental.session.compacting` | Saves TODO/impl state before context compaction |
+| `session-context.ts` | `session.created` | Injects impl-progress context when a session starts |
+| `write-guard.ts` | `tool.execute.before` (Write) | Blocks Write tool on existing files (use Edit instead) |
 
 ---
 
 ## Agent Categories
 
-`categories.json` defines named model presets. Agents can opt into a preset via `category:` in their frontmatter; `make deploy-agents` resolves it to a concrete `model:` before syncing.
+`categories.json` defines named model presets. Agents can opt into a preset via `category:` in their frontmatter; `make deploy` resolves it to a concrete `model:` before syncing.
 
 ```json
 {
@@ -134,7 +127,7 @@ category: quick
 ---
 ```
 
-To reroute all agents to a different model tier, update `categories.json` and re-run `make deploy-agents`. `make lint-agents` validates that every `category:` value exists in `categories.json`.
+To reroute all agents to a different model tier, update `categories.json` and re-run `make deploy`. `make lint-agents` validates that every `category:` value exists in `categories.json`.
 
 ---
 
@@ -148,7 +141,7 @@ Skills call these CLI tools when available. Install them separately.
 | `acli`               | `/plan`, `/refine`, `/report`     | Atlassian CLI for Jira and Confluence |
 | `uv` / `poetry`      | `/branch`, `/check`               | Python dependency sync                |
 | `wandb` (Python SDK) | `/experiment-review`              | W&B run metrics                       |
-| `yq`                 | `make deploy-agents`              | YAML frontmatter parsing/resolution   |
+| `yq`                 | `make deploy`                     | YAML frontmatter parsing/resolution   |
 
 ---
 

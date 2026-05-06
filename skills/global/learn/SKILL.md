@@ -1,7 +1,7 @@
 ---
 name: learn
 description: >
-  Codify a correction or convention from the current session into CLAUDE.md (global)
+  Codify a correction or convention from the current session into AGENTS.md (global)
   or .agents/conventions.md (project-specific) in "Always/Never [action] BECAUSE
   [reason]" format. Use this skill whenever the user says "remember this", "add a
   rule", "don't do that again", "learn this", "/learn", or wants to capture a lesson
@@ -16,7 +16,7 @@ location in "Always/Never [action] BECAUSE [reason]" format — before the conve
 ends and the lesson is lost.
 
 Two destinations:
-- `CLAUDE.md` — global rules that apply in all projects (Claude's behavior)
+- `AGENTS.md` — global rules that apply in all projects
 - `.agents/conventions.md` — project-specific patterns for this repo only
 
 ---
@@ -64,7 +64,7 @@ Show the formatted rule and confirm before writing:
 Extract the 2–3 most distinctive terms from the rule and search both target files:
 
 ```bash
-grep -i "[key term 1]" CLAUDE.md .agents/conventions.md 2>/dev/null
+grep -i "[key term 1]" AGENTS.md .agents/conventions.md 2>/dev/null
 ```
 
 If a similar rule is found, show it:
@@ -80,11 +80,10 @@ If no similar rule, proceed.
 
 Ask:
 
-> "Is this rule global (applies in all projects → CLAUDE.md) or project-specific
+> "Is this rule global (applies in all projects → AGENTS.md) or project-specific
 > (only for this repo → .agents/conventions.md)?"
-
-Target file:
-- Global → `CLAUDE.md` in the project root
+...
+- Global → `AGENTS.md` in the project root
 - Project-specific → `.agents/conventions.md` (create if it doesn't exist)
 
 ---
@@ -94,7 +93,7 @@ Target file:
 Check whether the target file has an `## Always / Never` section:
 
 ```bash
-grep -n "^## Always" CLAUDE.md 2>/dev/null        # or .agents/conventions.md
+grep -n "^## Always" AGENTS.md 2>/dev/null        # or .agents/conventions.md
 ```
 
 **If the section exists:** Read the file, find the `## Always / Never` heading, and
@@ -120,7 +119,7 @@ Show what was written:
 
 ```
 Rule captured:
-  File:  CLAUDE.md  (or .agents/conventions.md)
+  File:  AGENTS.md  (or .agents/conventions.md)
   Rule:  Never use bare except clauses BECAUSE they silently swallow all errors,
          making debugging impossible and hiding production failures.
 ```

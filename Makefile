@@ -1,34 +1,48 @@
-GLOBAL_SKILLS     := skills/global
-CLAUDE_DIR        ?= $(HOME)/.claude/skills
-GEMINI_DIR        ?= $(HOME)/.gemini/skills
+GLOBAL_SKILLS      := skills/global
 
-HOOKS_SCRIPTS    := hooks/scripts
-HOOKS_CONFIG     := hooks/hooks.json
-CLAUDE_HOOKS_DIR ?= $(HOME)/.claude/hooks
-CLAUDE_SETTINGS  ?= $(HOME)/.claude/settings.json
+AGENTS_SRC         := agents
+AGENTS_PARTIALS    := agents/partials
+AGENTS_DIR         ?= $(HOME)/.agents
 
-AGENTS_SRC           := agents
-AGENTS_PARTIALS      := agents/partials
-AGENTS_DIR           ?= $(HOME)/.agents
-CLAUDE_AGENTS_LINK   ?= $(HOME)/.claude/agents
+OPENCODE_SKILLS_DIR ?= $(HOME)/.config/opencode/skills
 OPENCODE_AGENTS_DIR  ?= $(HOME)/.config/opencode/agents
 
-CATEGORIES_FILE      := categories.json
+CATEGORIES_FILE     := categories.json
 
-.PHONY: deploy deploy-claude deploy-gemini deploy-agents deploy-opencode deploy-hooks deploy-projects pull pull-claude pull-agents pull-hooks pull-projects deploy-dry list-skills lint-skills list-agents lint-agents list-hooks setup setup-opencode
+.PHONY: deploy deploy-opencode deploy-agents pull pull-skills pull-agents setup setup-opencode list-skills lint-skills list-agents lint-agents
 
-## Deploy everything
-deploy: deploy-claude deploy-gemini deploy-agents deploy-opencode deploy-hooks
+## Deploy everything to OpenCode
+deploy: deploy-opencode deploy-agents
 
-## Global skills → ~/.claude/skills/
-deploy-claude:
-	rsync -av --delete $(GLOBAL_SKILLS)/ $(CLAUDE_DIR)/
+## Skills → ~/.config/opencode/skills/ + Agents → ~/.config/opencode/agents/
+deploy-opencode: setup-opencode
+	@echo "Deploying skills to $(OPENCODE_SKILLS_DIR)..."
+	mkdir -p $(OPENCODE_SKILLS_DIR)
+	rsync -av --delete $(GLOBAL_SKILLS)/ $(OPENCODE_SKILLS_DIR)/
+	@echo "Deploying agents to $(OPENCODE_AGENTS_DIR)..."
+	rsync -av --delete --include='*.md' --exclude='*' $(AGENTS_SRC)/ $(OPENCODE_AGENTS_DIR)/
+	@if [ -f "$(CATEGORIES_FILE)" ]; then \
+		echo "Resolving agent categories in $(OPENCODE_AGENTS_DIR)..."; \
+		for f in $$(find $(OPENCODE_AGENTS_DIR) -name "*.md" 2>/dev/null); do \
+			[ -e "$$f" ] || continue; \
+			fm=$$(sed -n '1,/^---$$/p' "$$f" 2>/dev/null); \
+			[ -n "$$fm" ] || continue; \
+			if ! echo "$$fm" | grep -q "^---$$"; then continue; fi; \
+			agent=$$(basename "$$f" .md); \
+			category=$$(echo "$$fm" | yq eval 'select(di==0) | .category // ""' | grep -v '^null$$' | head -1); \
+			if [ -n "$$category" ] && [ "$$category" != '""' ]; then \
+				model=$$(jq -r '.["'"$$category"'"].model // empty' "$(CATEGORIES_FILE)"); \
+				if [ -n "$$model" ]; then \
+					echo "  $$agent: category=$$category → model=$$model"; \
+					sed -i 's|^category:.*|model: '"$$model"'|' "$$f"; \
+				else \
+					echo "WARN  $$agent: category '$$category' not found in categories.json"; \
+				fi \
+			fi \
+		done; \
+	fi
 
-## Global skills → ~/.gemini/skills/ (same source — unified)
-deploy-gemini:
-	rsync -av --delete $(GLOBAL_SKILLS)/ $(GEMINI_DIR)/
-
-## Agents → ~/.agents/ (canonical); Claude Code + opencode read via symlinks (run 'make setup' first)
+## Agents → ~/.agents/ (canonical, includes partials and memory)
 deploy-agents:
 	@echo "Deploying agents to $(AGENTS_DIR)..."
 	mkdir -p $(AGENTS_DIR)
@@ -54,62 +68,70 @@ deploy-agents:
 		done; \
 	fi
 
-## Agents → ~/.config/opencode/agents/ (only .md files, category → model)
-deploy-opencode: setup-opencode
-	@echo "Deploying agents to $(OPENCODE_AGENTS_DIR)..."
-	rsync -av --delete --include='*.md' --exclude='*' $(AGENTS_SRC)/ $(OPENCODE_AGENTS_DIR)/
-	@if [ -f "$(CATEGORIES_FILE)" ]; then \
-		echo "Resolving agent categories in $(OPENCODE_AGENTS_DIR)..."; \
-		for f in $$(find $(OPENCODE_AGENTS_DIR) -name "*.md" 2>/dev/null); do \
-			[ -e "$$f" ] || continue; \
-			fm=$$(sed -n '1,/^---$$/p' "$$f" 2>/dev/null); \
-			[ -n "$$fm" ] || continue; \
-			if ! echo "$$fm" | grep -q "^---$$"; then continue; fi; \
-			agent=$$(basename "$$f" .md); \
-			category=$$(echo "$$fm" | yq eval 'select(di==0) | .category // ""' | grep -v '^null$$' | head -1); \
-			if [ -n "$$category" ] && [ "$$category" != '""' ]; then \
-				model=$$(jq -r '.["'"$$category"'"].model // empty' "$(CATEGORIES_FILE)"); \
-				if [ -n "$$model" ]; then \
-					echo "  $$agent: category=$$category → model=$$model"; \
-					sed -i 's|^category:.*|model: '"$$model"'|' "$$f"; \
-				else \
-					echo "WARN  $$agent: category '$$category' not found in categories.json"; \
-				fi \
-			fi \
-		done; \
-	fi
+## Pull changes back from deployed locations
+pull: pull-skills pull-agents
 
-## Pull local changes back into the repository
-
-pull: pull-claude pull-agents pull-hooks
-
-## ~/.claude/skills/ → Global skills
-pull-claude:
-	rsync -av $(CLAUDE_DIR)/ $(GLOBAL_SKILLS)/
+## ~/.config/opencode/skills/ → skills/global/
+pull-skills:
+	rsync -av $(OPENCODE_SKILLS_DIR)/ $(GLOBAL_SKILLS)/
 
 ## ~/.agents/ → agents/
 pull-agents:
 	rsync -av $(AGENTS_DIR)/ $(AGENTS_SRC)/
 
-## Dry run — shows what deploy would do without writing anything
-deploy-dry:
-	@echo "=== claude ===" && rsync -avn --delete $(GLOBAL_SKILLS)/ $(CLAUDE_DIR)/
-	@echo "=== gemini ===" && rsync -avn --delete $(GLOBAL_SKILLS)/ $(GEMINI_DIR)/
-	@echo "=== agents ===" && rsync -avn --delete $(AGENTS_SRC)/ $(AGENTS_DIR)/
+## One-time setup: create ~/.agents/ and ~/.config/opencode/ directories
+setup:
+	@echo "=== Setting up canonical agents directory ==="
+	mkdir -p $(AGENTS_DIR)
+	@echo "Created $(AGENTS_DIR)"
+	@$(MAKE) setup-opencode
+	@echo "=== Done. Run 'make deploy' to populate. ==="
 
-## ~/.claude/hooks/ → hooks/scripts/
-pull-hooks:
-	rsync -av $(CLAUDE_HOOKS_DIR)/ $(HOOKS_SCRIPTS)/
+## One-time setup: create ~/.config/opencode/agents/ and ~/.config/opencode/skills/
+setup-opencode:
+	mkdir -p $(OPENCODE_AGENTS_DIR)
+	mkdir -p $(OPENCODE_SKILLS_DIR)
+	@echo "Created $(OPENCODE_AGENTS_DIR)"
+	@echo "Created $(OPENCODE_SKILLS_DIR)"
 
-## List all deployed hooks
-list-hooks:
-	@echo "Hook scripts ($(shell ls $(CLAUDE_HOOKS_DIR)/*.sh 2>/dev/null | wc -l)):" && ls $(CLAUDE_HOOKS_DIR)/*.sh 2>/dev/null || echo "(not deployed — run make deploy-hooks)"
+## List all skills
 list-skills:
-	@echo "Global ($(shell ls $(GLOBAL_SKILLS) | wc -l) skills):" && ls $(GLOBAL_SKILLS)/
+	@echo "Global ($(shell ls $(GLOBAL_SKILLS) 2>/dev/null | wc -l) skills):" && ls $(GLOBAL_SKILLS)/ 2>/dev/null || echo "(no skills)"
 
 ## List all agents
 list-agents:
-	@echo "Agents ($(shell ls $(AGENTS_DIR) 2>/dev/null | wc -l)):" && ls $(AGENTS_DIR)/ 2>/dev/null || echo "(not deployed — run make setup && make deploy-agents)"
+	@echo "Agents ($(shell ls $(AGENTS_SRC)/*.md 2>/dev/null | wc -l)):" && ls $(AGENTS_SRC)/*.md 2>/dev/null | xargs -n1 basename 2>/dev/null || echo "(no agents)"
+
+## Validate SKILL.md files before deploying
+lint-skills:
+	@ok=true; \
+	for dir in $(GLOBAL_SKILLS)/*/; do \
+		skill=$$(basename "$$dir"); \
+		file="$$dir/SKILL.md"; \
+		if [ ! -f "$$file" ]; then \
+			echo "FAIL  $$skill: missing SKILL.md"; \
+			ok=false; \
+			continue; \
+		fi; \
+		if ! head -1 "$$file" | grep -q '^---$$'; then \
+			echo "FAIL  $$skill: missing YAML frontmatter (no opening ---)"; \
+			ok=false; \
+			continue; \
+		fi; \
+		fm=$$(sed -n '2,/^---$$/p' "$$file"); \
+		if ! echo "$$fm" | grep -q '^name:'; then \
+			echo "FAIL  $$skill: frontmatter missing 'name:' field"; \
+			ok=false; \
+		fi; \
+		if ! echo "$$fm" | grep -q '^description:'; then \
+			echo "FAIL  $$skill: frontmatter missing 'description:' field"; \
+			ok=false; \
+		fi; \
+		if echo "$$fm" | grep -q '^name:' && echo "$$fm" | grep -q '^description:'; then \
+			echo "OK    $$skill"; \
+		fi; \
+	done; \
+	$$ok
 
 ## Validate agent .md files before deploying
 lint-agents:
@@ -144,62 +166,5 @@ lint-agents:
 		if [ -n "$$name" ] && [ "$$name" != '""' ] && [ -n "$$description" ] && [ "$$description" != '""' ]; then \
 			echo "OK    $$agent"; \
 		fi \
-	done; \
-	$$ok
-
-
-## One-time setup: create ~/.agents/ and symlink Claude Code to it (opencode uses native agents only)
-setup:
-	@echo "=== Setting up canonical agents directory ==="
-	mkdir -p $(AGENTS_DIR)
-	@echo "Created $(AGENTS_DIR)"
-	@if [ -L $(CLAUDE_AGENTS_LINK) ] && [ "$$(readlink $(CLAUDE_AGENTS_LINK))" = "$(AGENTS_DIR)" ]; then \
-		echo "OK    $(CLAUDE_AGENTS_LINK) → $(AGENTS_DIR) (already correct)"; \
-	elif [ -e $(CLAUDE_AGENTS_LINK) ] && [ ! -L $(CLAUDE_AGENTS_LINK) ]; then \
-		echo "WARN  $(CLAUDE_AGENTS_LINK) exists and is not a symlink — remove it first (see CLAUDE.md)"; \
-	else \
-		ln -sfn $(AGENTS_DIR) $(CLAUDE_AGENTS_LINK) && \
-		echo "LINK  $(CLAUDE_AGENTS_LINK) → $(AGENTS_DIR)"; \
-	fi
-	@$(MAKE) setup-opencode
-	@echo "=== Done. Run 'make deploy-agents' to populate ~/.agents/ ==="
-
-## One-time setup: create ~/.config/opencode/agents/ (no symlink)
-setup-opencode:
-	@if [ -L $(OPENCODE_AGENTS_DIR) ]; then \
-		echo "Removing stale opencode symlink $(OPENCODE_AGENTS_DIR)"; \
-		rm $(OPENCODE_AGENTS_DIR); \
-	fi
-	@mkdir -p $(OPENCODE_AGENTS_DIR)
-	@echo "Created $(OPENCODE_AGENTS_DIR)"
-
-## Validate SKILL.md files before deploying
-lint-skills:
-	@ok=true; \
-	for dir in $(GLOBAL_SKILLS)/*/; do \
-		skill=$$(basename "$$dir"); \
-		file="$$dir/SKILL.md"; \
-		if [ ! -f "$$file" ]; then \
-			echo "FAIL  $$skill: missing SKILL.md"; \
-			ok=false; \
-			continue; \
-		fi; \
-		if ! head -1 "$$file" | grep -q '^---$$'; then \
-			echo "FAIL  $$skill: missing YAML frontmatter (no opening ---)"; \
-			ok=false; \
-			continue; \
-		fi; \
-		fm=$$(sed -n '2,/^---$$/p' "$$file"); \
-		if ! echo "$$fm" | grep -q '^name:'; then \
-			echo "FAIL  $$skill: frontmatter missing 'name:' field"; \
-			ok=false; \
-		fi; \
-		if ! echo "$$fm" | grep -q '^description:'; then \
-			echo "FAIL  $$skill: frontmatter missing 'description:' field"; \
-			ok=false; \
-		fi; \
-		if echo "$$fm" | grep -q '^name:' && echo "$$fm" | grep -q '^description:'; then \
-			echo "OK    $$skill"; \
-		fi; \
 	done; \
 	$$ok

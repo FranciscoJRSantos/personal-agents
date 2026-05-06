@@ -20,7 +20,7 @@ Nothing is written to Jira until the user explicitly approves.
 - `acli jira get` often returns sparse output for tickets with custom fields — fall back to `acli jira workitem view --json` immediately if key fields (description, type) are missing.
 - Ticket type detection can fail for hybrid tickets (e.g. a Feature with ML evaluation components). When in doubt, ask the user rather than guessing — getting the type wrong produces a structurally mismatched plan.
 - Never invent metric values, thresholds, or acceptance criteria — if the ticket doesn't specify them, mark them as `TBD` and flag this to the user before proceeding.
-- `acli jira workitem comment add` may require `--body-type` or other flags depending on the acli version — check `--help` first (Step 5 already does this).
+- `acli jira workitem comment create` accepts `--body-file` for ADF JSON. Always convert markdown plans to ADF before posting (Step 5 handles this).
 
 ---
 
@@ -294,10 +294,24 @@ First check available flags:
 acli jira workitem comment --help
 ```
 
-Then post the plan as a comment:
+Then convert the markdown plan to Atlassian Document Format (ADF) and post it:
 
 ```bash
-acli jira workitem comment add PROJ-123 --body "[plan content]"
+# Save the plan markdown to a temp file
+PLAN_MD=$(mktemp)
+cat > "$PLAN_MD" <<'EOF'
+[paste the full approved plan markdown here]
+EOF
+
+# Convert to ADF JSON
+PLAN_JSON=$(mktemp)
+python3 ~/.config/opencode/skills/plan/md_to_adf.py "$PLAN_MD" "$PLAN_JSON"
+
+# Post the ADF comment
+acli jira workitem comment create --key PROJ-123 --body-file "$PLAN_JSON"
+
+# Clean up
+rm "$PLAN_MD" "$PLAN_JSON"
 ```
 
 Confirm the comment was posted and show the ticket URL or key.

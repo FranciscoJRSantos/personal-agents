@@ -3,7 +3,7 @@ name: adr
 description: >
   Creates Architecture Decision Records (ADRs) when significant design choices are
   made. Captures context, decision, consequences, and alternatives rejected — the
-  "why" that CLAUDE.md doesn't hold. Use this skill whenever the user says "record
+  "why" that AGENTS.md doesn't hold. Use this skill whenever the user says "record
   this decision", "write an ADR", "document why we chose X", "capture this
   architecture decision", or wants to preserve design rationale for future reference.
   Stores under docs/decisions/ or .agents/decisions/ (whichever exists).
@@ -14,7 +14,7 @@ description: >
 
 Creates an Architecture Decision Record for a significant design choice. ADRs answer
 "why did we build it this way?" six months later — context that code comments and
-CLAUDE.md don't hold.
+AGENTS.md don't hold.
 
 Stored as numbered markdown files: `docs/decisions/ADR-<NNN>-<slug>.md`
 (falls back to `.agents/decisions/` if `docs/` doesn't exist).

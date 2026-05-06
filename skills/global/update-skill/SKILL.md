@@ -3,8 +3,8 @@ name: update-skill
 description: >
   Enforces that all skill and agent edits happen in the source repo, not the deployed
   locations. Use this skill whenever you are asked to edit, update, modify, or create
-  a skill or agent, or whenever a direct edit to ~/.claude/skills/, ~/.agents/,
-  ~/.gemini/skills/, or ~/.config/eca/skills/ is requested.
+  a skill or agent, or whenever a direct edit to ~/.config/opencode/skills/,
+  ~/.config/opencode/agents/, or ~/.agents/ is requested.
   Entry point: /update-skill
 ---
 
@@ -50,5 +50,5 @@ This syncs all skills and agents to their deployed locations atomically.
 
 ## Gotchas
 
-- Never edit `~/.claude/skills/`, `~/.agents/`, `~/.gemini/skills/`, or `~/.config/eca/skills/` directly BECAUSE `make deploy` uses `rsync --delete` and will overwrite those changes.
+- Never edit `~/.config/opencode/skills/`, `~/.config/opencode/agents/`, or `~/.agents/` directly BECAUSE `make deploy` uses `rsync --delete` and will overwrite those changes.
 - Always run `make lint-skills` or `make lint-agents` before deploying BECAUSE missing frontmatter fields will fail silently or cause the skill to not load.

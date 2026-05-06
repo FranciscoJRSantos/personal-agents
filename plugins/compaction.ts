@@ -5,13 +5,13 @@ import * as path from "path"
 export const CompactionPlugin: Plugin = async ({ client, worktree }) => {
   return {
     "experimental.session.compacting": async (_input, output) => {
-      const claudeFile = path.join(worktree, "CLAUDE.md")
+      const agentsFile = path.join(worktree, "AGENTS.md")
       const artifactsDir = path.join(worktree, ".agents", "artifacts")
 
-      // Extract TODOs from CLAUDE.md
+      // Extract TODOs from AGENTS.md
       let todos: string[] = []
-      if (fs.existsSync(claudeFile)) {
-        const content = fs.readFileSync(claudeFile, "utf-8")
+      if (fs.existsSync(agentsFile)) {
+        const content = fs.readFileSync(agentsFile, "utf-8")
         todos = content
           .split("\n")
           .filter((line) => /^- \[[ x]\]/.test(line))
