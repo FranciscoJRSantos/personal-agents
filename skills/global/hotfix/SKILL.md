@@ -167,6 +167,36 @@ EOF
 
 Show the MR URL when done.
 
+### Update Project State
+
+Write `.agents/STATE.md` to record the hotfix:
+
+```bash
+mkdir -p .agents
+cat > .agents/STATE.md <<'EOF'
+---
+last_updated: <ISO 8601 timestamp>
+current_branch: <BRANCH_NAME>
+position: hotfix shipped
+---
+## Decisions
+- <TICKET or description>: <what was fixed and why> (<date>)
+EOF
+```
+
+---
+
+## Authentication Gate Protocol
+
+Auth errors during execution are *gates*, not bugs. Indicators: "Not authenticated", "Not logged in", "Unauthorized", "401", "403", "Please run {tool} login", "Set {ENV_VAR}".
+
+When encountered:
+1. Recognize it's an auth gate, not a bug
+2. STOP immediately
+3. Show the user exactly what command to run or credential to provide
+4. Provide a verification command to confirm auth is working
+5. Wait for user to complete the auth step before continuing
+
 ---
 
 ## Quality Bar

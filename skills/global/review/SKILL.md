@@ -16,9 +16,9 @@ Review the current branch's changes against `main` and produce a structured, act
 
 ## Gotchas
 
-- For very large diffs (>500 lines), delegate to the `code-reviewer` subagent instead of loading the full diff into main context — the subagent is purpose-built for this and won't bloat the conversation.
+- For very large diffs (>500 lines), delegate to the `reviewer` subagent instead of loading the full diff into main context — the subagent is purpose-built for this and won't bloat the conversation.
 - If `main` doesn't exist as a local branch, try `origin/main`, then `master`, then ask the user what the base branch is.
-- Context loading in Step 4 is capped at the changed files plus 2 additional context files. For very large diffs (>500 lines), delegate to the code-reviewer subagent instead.
+- Context loading in Step 4 is capped at the changed files plus 2 additional context files. For very large diffs (>500 lines), delegate to the reviewer subagent instead.
 - The branch name may not contain a ticket ID (e.g. on a personal or hotfix branch) — fall back to `LABEL=$BRANCH` for artifact naming, which is already handled in Step 7.
 
 ---

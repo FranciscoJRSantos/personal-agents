@@ -65,16 +65,18 @@ make deploy   # sync skills and agents to OpenCode
 
 ## Agents
 
-Agents run in isolated context windows and return findings only — they do not write artifacts.
+Primary agents are Tab-switchable during a session. Subagents run in isolated context windows and return findings only.
 
-| Agent                 | Trigger                                        | Purpose                                              |
-|-----------------------|------------------------------------------------|------------------------------------------------------|
-| `code-reviewer`       | `/review` (large diffs), "deep review"         | Isolated code review of own branch diff              |
-| `experiment-analyzer` | "analyze experiment results", before `/report` | Validate ML metrics against plan thresholds          |
-| `pipeline-validator`  | "validate pipeline", "ready to ship?"          | Check artifact chain integrity before `/ship`        |
-| `pr-reviewer`         | "review !123", "review teammate's MR"          | Review incoming MRs from teammates via `glab`        |
-| `ticket-analyzer`     | "analyze this ticket", before `/plan`          | Surface requirements gaps and risks in a Jira ticket |
-| `verifier`            | "verify this artifact", "check plan quality"   | Check that an artifact faithfully answers its source |
+| Agent                 | Trigger                                         | Purpose                                                     | Category | Mode     |
+|-----------------------|-------------------------------------------------|-------------------------------------------------------------|----------|----------|
+| `reviewer`            | `/review`, "check my changes", "review !123"    | Code review (own branch or incoming MR). Auto-detects mode. | deep     | all      |
+| `fixer`               | "fixer", "fast implementation", "@fixer ..."    | Fast bounded implementation. Tab-switchable.                | quick    | primary  |
+| `experiment-analyzer` | "analyze experiment results", before `/report`  | Validate ML metrics against plan thresholds                 | deep     | subagent |
+| `explorer`            | "@explorer \<query\>", "find files matching..." | Fast read-only codebase reconnaissance                      | quick    | subagent |
+| `observer`            | "@observer \<question\>", "@observer update"    | Maintain and explain codebase via codemaps                  | explore  | subagent |
+| `pipeline-validator`  | "validate pipeline", "ready to ship?"           | Check artifact chain integrity before `/ship`               | quick    | subagent |
+| `ticket-analyzer`     | "analyze this ticket", before `/plan`           | Surface requirements gaps and risks in a Jira ticket        | quick    | subagent |
+| `verifier`            | "verify this artifact", "check plan quality"    | Check that an artifact faithfully answers its source        | quick    | subagent |
 
 ---
 
@@ -97,12 +99,12 @@ Skills pass context to each other via `.agents/artifacts/`:
 
 OpenCode plugins fire on lifecycle events. They live in `plugins/` and are registered in `~/.config/opencode/opencode.json`.
 
-| Plugin | Event | Purpose |
-|--------|-------|---------|
-| `auto-lint.ts` | `tool.execute.after` (Write) | Runs project linter on edited JS/TS files |
-| `compaction.ts` | `experimental.session.compacting` | Saves TODO/impl state before context compaction |
-| `session-context.ts` | `session.created` | Injects impl-progress context when a session starts |
-| `write-guard.ts` | `tool.execute.before` (Write) | Blocks Write tool on existing files (use Edit instead) |
+| Plugin               | Event                             | Purpose                                                |
+|----------------------|-----------------------------------|--------------------------------------------------------|
+| `auto-lint.ts`       | `tool.execute.after` (Write)      | Runs project linter on edited JS/TS files              |
+| `compaction.ts`      | `experimental.session.compacting` | Saves TODO/impl state before context compaction        |
+| `session-context.ts` | `session.created`                 | Injects impl-progress context when a session starts    |
+| `write-guard.ts`     | `tool.execute.before` (Write)     | Blocks Write tool on existing files (use Edit instead) |
 
 ---
 
@@ -135,13 +137,13 @@ To reroute all agents to a different model tier, update `categories.json` and re
 
 Skills call these CLI tools when available. Install them separately.
 
-| Tool                 | Used by                           | Purpose                               |
-|----------------------|-----------------------------------|---------------------------------------|
-| `glab`               | `/gitlab`, `/ship`, `pr-reviewer` | GitLab CLI for MRs and pipelines      |
-| `acli`               | `/plan`, `/refine`, `/report`     | Atlassian CLI for Jira and Confluence |
-| `uv` / `poetry`      | `/branch`, `/check`               | Python dependency sync                |
-| `wandb` (Python SDK) | `/experiment-review`              | W&B run metrics                       |
-| `yq`                 | `make deploy`                     | YAML frontmatter parsing/resolution   |
+| Tool                 | Used by                        | Purpose                               |
+|----------------------|--------------------------------|---------------------------------------|
+| `glab`               | `/gitlab`, `/ship`, `reviewer` | GitLab CLI for MRs and pipelines      |
+| `acli`               | `/plan`, `/refine`, `/report`  | Atlassian CLI for Jira and Confluence |
+| `uv` / `poetry`      | `/branch`, `/check`            | Python dependency sync                |
+| `wandb` (Python SDK) | `/experiment-review`           | W&B run metrics                       |
+| `yq`                 | `make deploy`                  | YAML frontmatter parsing/resolution   |
 
 ---
 
@@ -177,3 +179,45 @@ use the pipeline-validator agent   # check no stale artifacts or TBD thresholds
 /implement     → /clear → /review      # fresh context for review
 /review        → /clear → /ship        # fresh context for ship
 ```
+
+---
+
+## Memory Store
+
+Skills and agents can persist memories across sessions to `~/.agents/memory/` (global) or `./agents/memory/` (project). Each uses a compact `MEMORY.md` index. CRUD via `/new-memory`, `/recall`, `/forget`, `/memories`.
+
+---
+
+## Project State
+
+`.agents/STATE.md` persists cross-session context (current branch, stage, decisions, blockers). Written by `/implement`, `/hotfix`, `/quick`; read by `/status`.
+
+---
+
+## Deployment Targets
+
+| Command                | What it does                                                                         |
+|------------------------|--------------------------------------------------------------------------------------|
+| `make setup`           | One-time: create `~/.agents/` and `~/.config/opencode/` directories                  |
+| `make deploy`          | Sync skills + agents to OpenCode (resolves `category:` → `model:`)                   |
+| `make deploy-opencode` | Sync skills to `~/.config/opencode/skills/` + agents to `~/.config/opencode/agents/` |
+| `make deploy-agents`   | Sync agents to `~/.agents/` (includes partials and memory)                           |
+| `make pull`            | Pull changes from deployed locations back into the repo                              |
+| `make lint-skills`     | Validate SKILL.md frontmatter                                                        |
+| `make lint-agents`     | Validate agent `.md` frontmatter (warns on missing `permission:`)                    |
+
+---
+
+## Adding a Skill
+
+1. Create `skills/global/<name>/SKILL.md` with YAML frontmatter (`name`, `description`) and instructions
+2. Run `make lint-skills` to validate
+3. Run `make deploy`
+
+---
+
+## Adding a New Agent
+
+1. Create `agents/<name>.md` with YAML frontmatter (`description`, `category`, `permission`)
+2. Run `make lint-agents` to validate
+3. Run `make deploy`

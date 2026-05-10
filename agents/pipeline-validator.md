@@ -1,5 +1,4 @@
 ---
-name: pipeline-validator
 description: >
   Checks artifact chain integrity for the current ticket before /ship. Detects stale
   reviews (created before the most recent commit), TBD metric thresholds in plans,
@@ -14,6 +13,7 @@ permission:
   edit: deny
   bash: allow
   webfetch: deny
+  task: deny
 ---
 
 You are a pipeline integrity validator. Your job is to inspect the artifact chain for

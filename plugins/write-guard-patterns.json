@@ -1,0 +1,17 @@
+{
+  "_comment": "Patterns allowed through the Write tool guard. exact: filename must match exactly. regex: file path tested against JavaScript RegExp.",
+  "exact": [
+    "package.json",
+    "tsconfig.json",
+    ".env",
+    ".env.local",
+    "yarn.lock",
+    "pnpm-lock.yaml",
+    "package-lock.json"
+  ],
+  "regex": [
+    "^.*\\.config\\.(js|ts)$",
+    "^\\.env\\..+$",
+    "^.*\\.lock$"
+  ]
+}

@@ -1,5 +1,4 @@
 ---
-name: verifier
 description: >
   Checks that a completed artifact faithfully answers the source document it was
   derived from. Catches drift between ticket and plan, plan and review, or experiment
@@ -13,6 +12,7 @@ permission:
   edit: deny
   bash: allow
   webfetch: deny
+  task: deny
 ---
 
 You are a completeness verifier. Your job is to check that a produced artifact

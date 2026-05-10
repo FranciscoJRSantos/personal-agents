@@ -56,7 +56,14 @@ If not on a feature branch (e.g. on `main`), skip to Step 5 (No Active Work).
 
 Run all of these concurrently to minimise latency:
 
-### 2a. Artifacts
+### 2a. Project State
+
+```bash
+echo "=== Project State ==="
+[ -f ".agents/STATE.md" ] && cat ".agents/STATE.md" || echo "  No STATE.md — run /implement or /quick to start tracked work"
+```
+
+### 2b. Artifacts
 
 ```bash
 LABEL=${TICKET:-$BRANCH}
@@ -77,7 +84,7 @@ if [ -f "$PROG" ]; then
 fi
 ```
 
-### 2b. Git state
+### 2c. Git state
 
 ```bash
 echo "=== Commits ahead of main ==="
@@ -90,7 +97,7 @@ echo "=== Diff summary ==="
 git diff --stat main...HEAD 2>/dev/null | tail -1
 ```
 
-### 2c. GitLab MR & CI
+### 2d. GitLab MR & CI
 
 ```bash
 echo "=== Open MRs for this branch ==="
@@ -100,7 +107,7 @@ echo "=== Pipeline status ==="
 glab ci status 2>/dev/null
 ```
 
-### 2d. Jira ticket status (optional — fail silently)
+### 2e. Jira ticket status (optional — fail silently)
 
 ```bash
 if [ -n "$TICKET" ]; then
@@ -109,7 +116,7 @@ if [ -n "$TICKET" ]; then
 fi
 ```
 
-### 2e. Codemap (if exists)
+### 2f. Codemap (if exists)
 
 ```bash
 CODEMAP=".agents/codemap/codemap.md"

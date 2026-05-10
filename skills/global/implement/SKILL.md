@@ -43,11 +43,12 @@ The 5 stages, in order:
 
 ## Helper: Update Progress Artifact
 
-After each stage approval, automatically update the progress artifact to track progress.
+After each stage approval, automatically update the progress artifact and project state.
 Use this helper to:
 1. Mark the completed stage as `complete` with current ISO 8601 timestamp
 2. Mark the next stage as `in_progress`
 3. Save the file
+4. Update `.agents/STATE.md` with decisions made during the stage and the new position
 
 **Script** (run after each stage gate approval):
 
@@ -324,6 +325,7 @@ Update the progress artifact to mark the implementation complete:
 2. Mark Stage 5 as `complete` with the current ISO timestamp (if not already done)
 3. Add `completed: <ISO 8601 timestamp>` field to the frontmatter
 4. Read the file, update it, write it back
+5. Update `.agents/STATE.md` with final status: `position: complete` and any decisions made during integration
 
 Display completion message:
 
@@ -343,6 +345,47 @@ Next step: run /review for a severity-grouped code review against main.
 ```
 
 Run `/clear` before `/review` to keep review context focused.
+
+---
+
+## Authentication Gate Protocol
+
+Auth errors during execution are *gates*, not bugs. Indicators: "Not authenticated", "Not logged in", "Unauthorized", "401", "403", "Please run {tool} login", "Set {ENV_VAR}".
+
+When encountered during any stage:
+1. Recognize it's an auth gate, not a Rule 1 bug
+2. STOP the current task immediately
+3. Show the user exactly what command to run or credential to provide (e.g. `glab auth login`, `huggingface-cli login`, API key name)
+4. Provide a verification command to confirm auth is working
+5. Wait for user to complete the auth step before continuing
+
+Document auth gates as "normal flow" in the stage gate summary, not as deviations.
+
+---
+
+## Deviation Rules
+
+While executing a stage, you may discover work not explicitly in the plan. Apply these rules automatically. Track all deviations in the stage summary when presenting for gate approval.
+
+**Auto-fix** (no permission needed):
+
+| Rule | What | Examples |
+|------|------|----------|
+| 1 | Bugs in code you just wrote | Wrong queries, logic errors, type errors, null pointer exceptions, broken validation, security vulnerabilities, race conditions |
+| 2 | Missing critical functionality | Error handling, input validation, null checks, auth on protected routes, missing DB indexes, no error logging |
+| 3 | Blocking issues | Missing dependency, wrong types, broken imports, missing env var, circular dependency |
+
+**Ask** (stop and get user decision):
+
+| Rule | What | Examples |
+|------|------|----------|
+| 4 | Architectural changes | New DB table (not column), major schema changes, new service layer, switching libraries/frameworks, changing auth approach, new infrastructure, breaking API changes |
+
+Fix inline → add/update tests if applicable → verify fix works → continue task. Document deviations in the stage gate summary using format: `[Rule N - Type] description`.
+
+**Scope boundary:** Only auto-fix issues DIRECTLY caused by the current stage's changes. Pre-existing linting errors or failures in unrelated files are out of scope — log them to .agents/STATE.md as deferred items.
+
+**Fix attempt limit:** After 3 auto-fix attempts on a single issue, stop fixing, document remaining issues in the summary as "Deferred Issues", and continue to the next stage.
 
 ---
 

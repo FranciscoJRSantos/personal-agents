@@ -254,7 +254,22 @@ Never accept "ongoing" or "as needed" — every epic must have an end state.]
 
 ---
 
-## Step 4: Present for Approval
+## Step 4: Verify Plan Completeness
+
+Before showing the plan to the user, run an automated verification against it:
+
+1. **AC-to-Step traceability:** Does every acceptance criterion from the ticket have at least one implementation step that addresses it?
+2. **Step-to-Verification traceability:** Does every implementation step have a corresponding test/verification section?
+3. **Circular dependencies:** Are any steps in the plan mutually dependent on each other?
+4. **TBD metrics:** Scan for "TBD", "to be determined", "to be defined" in metrics, thresholds, and criteria — these duplicate the Step 6 scan but this is an earlier catch.
+
+Run these checks against the generated plan text. If any issues are found, fix them in the plan before proceeding. If all checks pass, proceed.
+
+If the plan is an Epic Breakdown, also verify: every sub-epic has an end condition, and no sub-epic is defined as "ongoing" or "as needed."
+
+---
+
+## Step 5: Present for Approval
 
 Show the full plan.
 
@@ -283,7 +298,7 @@ Do not write to Jira yet.
 
 ---
 
-## Step 5: Write to Jira (only after explicit approval)
+## Step 6: Write to Jira (only after explicit approval)
 
 The user must say "approved", "yes", "lgtm", or similar. If they ask for changes,
 revise the plan and show the updated version.
@@ -318,7 +333,7 @@ Confirm the comment was posted and show the ticket URL or key.
 
 ---
 
-## Step 6: Write Artifact
+## Step 7: Write Artifact
 
 After the Jira comment is confirmed, write the plan locally so downstream skills can use it:
 

@@ -2,34 +2,47 @@ import type { Plugin } from "@opencode-ai/plugin"
 import * as fs from "fs"
 import * as path from "path"
 
-// Patterns that are allowed to be overwritten by the Write tool.
-// Mirrors the original write-existing-file-guard.sh allow-list.
-const ALLOW_PATTERNS: Array<RegExp | string> = [
-  "package.json",
-  "tsconfig.json",
-  /^.*\.config\.(js|ts)$/,
-  ".env",
-  ".env.local",
-  /^\.env\..+$/,
-  /^.*\.lock$/,
-  "yarn.lock",
-  "pnpm-lock.yaml",
-  "package-lock.json",
-]
-
-function isAllowed(filePath: string): boolean {
-  const basename = path.basename(filePath)
-  for (const pattern of ALLOW_PATTERNS) {
-    if (typeof pattern === "string") {
-      if (basename === pattern || filePath === pattern) return true
-    } else {
-      if (pattern.test(basename) || pattern.test(filePath)) return true
-    }
+function loadPatterns(worktree: string): { exact: string[]; regex: RegExp[] } {
+  const defaults = {
+    exact: [
+      "package.json",
+      "tsconfig.json",
+      ".env",
+      ".env.local",
+      "yarn.lock",
+      "pnpm-lock.yaml",
+      "package-lock.json",
+    ],
+    regex: [
+      /^.*\.config\.(js|ts)$/,
+      /^\.env\..+$/,
+      /^.*\.lock$/,
+    ],
   }
+
+  const configPath = path.join(worktree, "plugins", "write-guard-patterns.json")
+  if (!fs.existsSync(configPath)) return defaults
+
+  try {
+    const raw = JSON.parse(fs.readFileSync(configPath, "utf-8"))
+    return {
+      exact: raw.exact ?? defaults.exact,
+      regex: (raw.regex ?? []).map((p: string) => new RegExp(p)),
+    }
+  } catch {
+    return defaults
+  }
+}
+
+function isAllowed(filePath: string, exact: string[], regex: RegExp[]): boolean {
+  const basename = path.basename(filePath)
+  if (exact.some((p) => basename === p || filePath === p)) return true
+  if (regex.some((r) => r.test(basename) || r.test(filePath))) return true
   return false
 }
 
 export const WriteGuardPlugin: Plugin = async ({ client, worktree }) => {
+  const patterns = loadPatterns(worktree)
   return {
     "tool.execute.before": async (input, output) => {
       if (input.tool !== "write") return
@@ -37,14 +50,13 @@ export const WriteGuardPlugin: Plugin = async ({ client, worktree }) => {
       const filePath: string = (output as any).args?.filePath
       if (!filePath) return
 
-      // Resolve absolute path relative to worktree
       const fullPath = path.isAbsolute(filePath)
         ? filePath
         : path.join(worktree, filePath)
 
       if (!fs.existsSync(fullPath)) return // New file — allow
 
-      if (isAllowed(filePath)) {
+      if (isAllowed(filePath, patterns.exact, patterns.regex)) {
         await client.app.log({
           body: {
             service: "write-guard-plugin",

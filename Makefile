@@ -9,7 +9,7 @@ OPENCODE_AGENTS_DIR  ?= $(HOME)/.config/opencode/agents
 
 CATEGORIES_FILE     := categories.json
 
-.PHONY: deploy deploy-opencode deploy-agents pull pull-skills pull-agents setup setup-opencode list-skills lint-skills list-agents lint-agents
+.PHONY: deploy deploy-opencode deploy-agents pull pull-skills pull-agents setup setup-opencode list-skills lint-skills list-agents lint-agents lint-docs
 
 ## Deploy everything to OpenCode
 deploy: deploy-opencode deploy-agents
@@ -20,53 +20,11 @@ deploy-opencode: setup-opencode
 	mkdir -p $(OPENCODE_SKILLS_DIR)
 	rsync -av --delete $(GLOBAL_SKILLS)/ $(OPENCODE_SKILLS_DIR)/
 	@echo "Deploying agents to $(OPENCODE_AGENTS_DIR)..."
-	rsync -av --delete --include='*.md' --exclude='*' $(AGENTS_SRC)/ $(OPENCODE_AGENTS_DIR)/
-	@if [ -f "$(CATEGORIES_FILE)" ]; then \
-		echo "Resolving agent categories in $(OPENCODE_AGENTS_DIR)..."; \
-		for f in $$(find $(OPENCODE_AGENTS_DIR) -name "*.md" 2>/dev/null); do \
-			[ -e "$$f" ] || continue; \
-			fm=$$(sed -n '1,/^---$$/p' "$$f" 2>/dev/null); \
-			[ -n "$$fm" ] || continue; \
-			if ! echo "$$fm" | grep -q "^---$$"; then continue; fi; \
-			agent=$$(basename "$$f" .md); \
-			category=$$(echo "$$fm" | yq eval 'select(di==0) | .category // ""' | grep -v '^null$$' | head -1); \
-			if [ -n "$$category" ] && [ "$$category" != '""' ]; then \
-				model=$$(jq -r '.["'"$$category"'"].model // empty' "$(CATEGORIES_FILE)"); \
-				if [ -n "$$model" ]; then \
-					echo "  $$agent: category=$$category → model=$$model"; \
-					sed -i 's|^category:.*|model: '"$$model"'|' "$$f"; \
-				else \
-					echo "WARN  $$agent: category '$$category' not found in categories.json"; \
-				fi \
-			fi \
-		done; \
-	fi
+	@scripts/deploy-agents.sh "$(AGENTS_SRC)" "$(OPENCODE_AGENTS_DIR)" "$(CATEGORIES_FILE)" --md-only
 
 ## Agents → ~/.agents/ (canonical, includes partials and memory)
 deploy-agents:
-	@echo "Deploying agents to $(AGENTS_DIR)..."
-	mkdir -p $(AGENTS_DIR)
-	rsync -av --delete $(AGENTS_SRC)/ $(AGENTS_DIR)/
-	@if [ -f "$(CATEGORIES_FILE)" ]; then \
-		echo "Resolving agent categories in $(AGENTS_DIR)..."; \
-		for f in $$(find $(AGENTS_DIR) -name "*.md"); do \
-			[ -e "$$f" ] || continue; \
-			fm=$$(sed -n '1,/^---$$/p' "$$f" 2>/dev/null); \
-			[ -n "$$fm" ] || continue; \
-			if ! echo "$$fm" | grep -q "^---$$"; then continue; fi; \
-			agent=$$(basename "$$f" .md); \
-			category=$$(echo "$$fm" | yq eval 'select(di==0) | .category // ""' | grep -v '^null$$' | head -1); \
-			if [ -n "$$category" ] && [ "$$category" != '""' ]; then \
-				model=$$(jq -r '.["'"$$category"'"].model // empty' "$(CATEGORIES_FILE)"); \
-				if [ -n "$$model" ]; then \
-					echo "  $$agent: category=$$category → model=$$model"; \
-					sed -i 's|^category:.*|model: '"$$model"'|' "$$f"; \
-				else \
-					echo "WARN  $$agent: category '$$category' not found in categories.json"; \
-				fi \
-			fi \
-		done; \
-	fi
+	@scripts/deploy-agents.sh "$(AGENTS_SRC)" "$(AGENTS_DIR)" "$(CATEGORIES_FILE)"
 
 ## Pull changes back from deployed locations
 pull: pull-skills pull-agents
@@ -144,12 +102,7 @@ lint-agents:
 			continue; \
 		fi; \
 		fm=$$(sed -n '1,/^---$$/p' "$$f"); \
-		name=$$(echo "$$fm" | yq eval 'select(di==0) | .name // ""' | grep -v '^null$$' | head -1); \
 		description=$$(echo "$$fm" | yq eval 'select(di==0) | .description // ""' | grep -v '^null$$' | head -1); \
-		if [ -z "$$name" ] || [ "$$name" = '""' ]; then \
-			echo "FAIL  $$agent: frontmatter missing 'name:' field"; \
-			ok=false; \
-		fi; \
 		if [ -z "$$description" ] || [ "$$description" = '""' ]; then \
 			echo "FAIL  $$agent: frontmatter missing 'description:' field"; \
 			ok=false; \
@@ -163,8 +116,49 @@ lint-agents:
 				echo "WARN  $$agent: category '$$category' not defined in categories.json"; \
 			fi \
 		fi; \
-		if [ -n "$$name" ] && [ "$$name" != '""' ] && [ -n "$$description" ] && [ "$$description" != '""' ]; then \
+		if [ -n "$$description" ] && [ "$$description" != '""' ]; then \
 			echo "OK    $$agent"; \
 		fi \
 	done; \
+	$$ok
+
+## Check AGENTS.md references match real skills and agents
+lint-docs:
+	@ok=true; \
+	echo "=== Checking skill references in AGENTS.md ==="; \
+	for ref in $$(grep -oP '\x60/\K[^/\x60 ,]+' AGENTS.md 2>/dev/null | sort -u); do \
+		case "$$ref" in skill-name|agent-name|TICKET|RUN|slug|type|query|range|name|decision|rule) continue ;; esac; \
+		if [ ! -f "$(GLOBAL_SKILLS)/$$ref/SKILL.md" ]; then \
+			echo "FAIL  skill '$$ref' referenced in AGENTS.md but skills/global/$$ref/SKILL.md not found"; \
+			ok=false; \
+		else \
+			echo "OK    /$$ref"; \
+		fi \
+	done; \
+	echo ""; \
+	echo "=== Checking agent references in AGENTS.md ==="; \
+	for f in $(AGENTS_SRC)/*.md; do \
+		agent=$$(basename "$$f" .md); \
+		if grep -qF "\`$$agent\`" AGENTS.md; then \
+			echo "OK    $$agent"; \
+		else \
+			echo "INFO  $$agent not referenced in AGENTS.md"; \
+		fi \
+	done; \
+	echo ""; \
+	echo "=== Checking artifact chain integrity ==="; \
+	grep -oP '\x60<TICKET>-[^\x60]+\x60\s*\|\s*\x60/\w+' AGENTS.md 2>/dev/null \
+	| sed 's/\x60//g' \
+	| while IFS='|' read -r artifact written_by; do \
+		artifact=$$(echo "$$artifact" | xargs); \
+		written_by=$$(echo "$$written_by" | xargs | cut -d' ' -f1 | tr -d '/'); \
+		skill_file="$(GLOBAL_SKILLS)/$$written_by/SKILL.md"; \
+		if [ ! -f "$$skill_file" ]; then \
+			echo "FAIL  artifact '$$artifact' written by '$$written_by' but skill not found at $$skill_file"; \
+			ok=false; \
+		else \
+			echo "OK    $$artifact ← /$$written_by"; \
+		fi \
+	done; \
+	echo ""; \
 	$$ok
