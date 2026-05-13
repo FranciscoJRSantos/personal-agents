@@ -63,16 +63,20 @@ If `main` doesn't exist, try `origin/main` or `master` as fallbacks.
 
 ---
 
-## Step 3: Load Plan Artifact (if available)
+## Step 3: Load Plan and Kanban Artifacts (if available)
 
-Check for a plan artifact to use its acceptance criteria during review:
+Check for plan and kanban artifacts to use their acceptance criteria and slice
+definitions during review:
 
 ```bash
 TICKET=$(git branch --show-current | grep -oE '[A-Z]+-[0-9]+')
 cat .agents/artifacts/${TICKET}-plan.md 2>/dev/null
+cat .agents/artifacts/${TICKET}-kanban-board.md 2>/dev/null
 ```
 
-If found, extract the acceptance criteria / test plan section. Use these to check whether the implementation covers what was committed to.
+If the plan artifact is found, extract the acceptance criteria / test plan section. Use these to check whether the implementation covers what was committed to.
+
+If the kanban-board artifact is found, extract the slice descriptions for context on what each vertical slice intended to deliver.
 
 ---
 

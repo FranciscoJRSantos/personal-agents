@@ -2,7 +2,8 @@
 name: plan
 description: >
   Fetches a Jira ticket, detects its type, and generates a type-aware implementation
-  plan. Presents the plan for approval before writing it back to Jira as a comment.
+  plan with Kanban/DAG vertical slices. Presents the plan for approval before writing
+  it back to Jira as a comment. Produces both a plan artifact and a kanban-board artifact.
   Use this skill whenever the user invokes /plan PROJ-123 or asks to generate an
   implementation plan for a Jira ticket.
   Entry point: /plan PROJ-123
@@ -10,8 +11,9 @@ description: >
 
 # Plan Skill
 
-Fetches a Jira ticket and produces a structured, type-aware implementation plan.
-Nothing is written to Jira until the user explicitly approves.
+Fetches a Jira ticket and produces a structured, type-aware implementation plan
+with a Kanban board of vertical slices. Nothing is written to Jira until the user
+explicitly approves.
 
 ---
 
@@ -254,14 +256,36 @@ Never accept "ongoing" or "as needed" — every epic must have an end state.]
 
 ---
 
-## Step 4: Verify Plan Completeness
+## Step 4: Module Interface Design
+
+This step maps the plan's implementation steps to specific modules, their public
+interfaces, and test boundaries. The output feeds directly into the Kanban slice
+definitions in Step 5.
+
+For each new or modified module in the plan, define:
+
+| Module | Public Interface | Test Boundaries | Layer |
+|--------|-----------------|-----------------|-------|
+| `<file path>` | `<methods/types/functions exported>` | `<what to test at the module boundary>` | `<data/pure/edge/ui/integration>` |
+
+Derive the module list from the implementation steps. For each step:
+1. Identify which file(s) need to be created or modified
+2. List the public API each module will expose
+3. Define what constitutes a valid test boundary (inputs → outputs, side effects, error cases)
+4. Tag the layer: `data` (schemas, types), `pure` (business logic), `edge` (I/O), `ui` (presentation), `integration` (wiring)
+
+This module map is embedded in the Kanban board artifact as `module_interfaces` per slice.
+
+---
+
+## Step 5: Verify Plan Completeness
 
 Before showing the plan to the user, run an automated verification against it:
 
 1. **AC-to-Step traceability:** Does every acceptance criterion from the ticket have at least one implementation step that addresses it?
 2. **Step-to-Verification traceability:** Does every implementation step have a corresponding test/verification section?
 3. **Circular dependencies:** Are any steps in the plan mutually dependent on each other?
-4. **TBD metrics:** Scan for "TBD", "to be determined", "to be defined" in metrics, thresholds, and criteria — these duplicate the Step 6 scan but this is an earlier catch.
+4. **TBD metrics:** Scan for "TBD", "to be determined", "to be defined" in metrics, thresholds, and criteria — these duplicate the Step 8 scan but this is an earlier catch.
 
 Run these checks against the generated plan text. If any issues are found, fix them in the plan before proceeding. If all checks pass, proceed.
 
@@ -269,9 +293,71 @@ If the plan is an Epic Breakdown, also verify: every sub-epic has an end conditi
 
 ---
 
-## Step 5: Present for Approval
+## Step 6: Decompose into Kanban Slices
 
-Show the full plan.
+After the plan is verified and the module interfaces are designed, decompose the work
+into vertical slices. Each slice crosses all layers (data → pure → edge → UI → integration)
+and delivers something testable.
+
+Group the module interfaces from Step 4 into slices by dependency order:
+
+1. Identify modules with no dependencies — these form the first slice(s)
+2. Group remaining modules by their dependency chain
+3. Assign each slice an ID, title, description, and tags
+
+**Slice rules:**
+- Each acceptance criterion → at least one slice that addresses it
+- Slices with no blocking dependencies can be tagged `parallel` — they can run concurrently
+- Slices needing user judgment → tag `afk` (away from keyboard)
+- Slices needing human review of AI output → tag `hitl` (human in the loop)
+- Slices that block others should have their `blocks` field set
+
+**Tags:**
+- `afk` — slice requires user judgment (parameter selection, design decisions)
+- `hitl` — slice needs human review of AI output
+- `parallel` — slice has no blocking relationships — can run in parallel
+
+Example vertical slice decomposition:
+
+```yaml
+slices:
+  - id: 1
+    title: "Define types and schemas"
+    description: "Core data types that all downstream modules depend on"
+    blocks: [2, 3]
+    blocked_by: []
+    module_interfaces:
+      - module: "src/models.py"
+        public_interface: "Item(BaseModel), ItemCreate(Item), ItemUpdate(Item)"
+        test_boundaries: "Construction, validation, serialization"
+    tags: []
+  - id: 2
+    title: "Implement business logic"
+    description: "Pure domain logic for item processing"
+    blocks: [5]
+    blocked_by: [1]
+    module_interfaces:
+      - module: "src/service.py"
+        public_interface: "process_item(item: Item) -> Result, validate_schema(data: dict) -> Item"
+        test_boundaries: "Happy path, edge cases, error states"
+    tags: []
+  - id: 3
+    title: "Add API endpoints"
+    description: "REST endpoints for CRUD operations"
+    blocks: [5]
+    blocked_by: [1]
+    module_interfaces:
+      - module: "src/api.py"
+        public_interface: "POST /items, GET /items/{id}, DELETE /items/{id}"
+        test_boundaries: "Status codes, payload validation, auth errors"
+    tags: [parallel]
+```
+
+---
+
+## Step 7: Present for Approval
+
+Show the full plan and the Kanban board decomposition.
 
 **Before asking for approval, scan all success metrics and thresholds for placeholder values.** Check the Evaluation Criteria table (ML plans), Definition of Done (CI/CD plans), and Acceptance Criteria (Feature plans) for:
 - The literal string "TBD" or "to be determined" or "to be defined"
@@ -292,16 +378,18 @@ Please provide a specific numeric threshold for each before this plan can be app
 
 Only show the approval prompt once all thresholds are concrete and numeric (or explicitly N/A with a stated reason):
 
-*"Does this plan look right? Say 'approved' to post it as a Jira comment, or tell me what to adjust."*
+*"Does this plan look right? Say 'approved' to post it as a Jira comment and write artifacts, or tell me what to adjust."*
 
 Do not write to Jira yet.
 
 ---
 
-## Step 6: Write to Jira (only after explicit approval)
+## Step 8: Write to Jira and Artifacts
 
 The user must say "approved", "yes", "lgtm", or similar. If they ask for changes,
 revise the plan and show the updated version.
+
+### 8a. Write to Jira
 
 First check available flags:
 
@@ -331,11 +419,7 @@ rm "$PLAN_MD" "$PLAN_JSON"
 
 Confirm the comment was posted and show the ticket URL or key.
 
----
-
-## Step 7: Write Artifact
-
-After the Jira comment is confirmed, write the plan locally so downstream skills can use it:
+### 8b. Write Plan Artifact
 
 ```bash
 mkdir -p .agents/artifacts
@@ -355,7 +439,36 @@ status: posted
 
 Followed by the full plan content.
 
-This artifact is read by `/branch` (plan summary on checkout), `/review` (acceptance criteria check), and `/ship` (commit message context).
+### 8c. Write Kanban Board Artifact
+
+Write `.agents/artifacts/<TICKET>-kanban-board.md`:
+
+```yaml
+---
+artifact: kanban-board
+ticket: <TICKET>
+skill: plan
+created: <ISO 8601 timestamp>
+status: active
+slices:
+  - id: 1
+    title: <slice title>
+    description: <what this slice delivers>
+    blocks: [<slice IDs>]
+    blocked_by: [<slice IDs>]
+    module_interfaces:
+      - module: <path>
+        public_interface: <methods/types>
+        test_boundaries: <boundary description>
+    tags: [afk|hitl|parallel]
+    status: pending
+    completed: null
+  - id: 2
+    ...
+---
+```
+
+This artifact is read by `/implement` (to know which slice to work on), `/status` (to show progress), and `pipeline-validator` (to check artifact health).
 
 Run `/clear` before `/implement` to start implementation in a fresh context window.
 
@@ -369,3 +482,5 @@ A good plan should:
 - Be proportionate: a small QoL change doesn't need 5 pages; an ML experiment does
 - Surface risks or ambiguities the ticket author may not have considered
 - Leave the "out of scope" section explicit, not implied
+- Decompose into vertical slices where each slice delivers something testable
+- Tag slices appropriately (afk, hitl, parallel) for correct routing during implementation

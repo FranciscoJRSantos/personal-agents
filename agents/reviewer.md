@@ -87,6 +87,19 @@ In PR mode, use Grep to find how changed functions/methods are called elsewhere 
 
 Style-only changes (renaming, formatting, comment updates) do not need full file context.
 
+### Push Coding Standards
+
+As the reviewer, you push coding standards into the review — the implementer should
+not have to guess them. Always load and apply:
+
+1. **Project conventions** — check `.agents/conventions.md` and any `AGENTS.md` rules
+   relevant to the code being reviewed
+2. **Shared review rules** — `~/.agents/partials/review-rules.md` (specialist frames,
+   language-specific defaults, anti-patterns)
+3. **Project-level review overrides** — `.agents/review.md` if present
+
+Flag any violation of these standards as appropriate severity items in the review.
+
 ### Review Rules
 
 Load and apply the shared review rules, specialist frames, and output format from `~/.agents/partials/review-rules.md`.

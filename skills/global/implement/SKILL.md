@@ -1,85 +1,40 @@
 ---
 name: implement
 description: >
-  Staged implementation skill enforcing data model → pure logic → edge logic →
-  UI → integration discipline. Hard gates between stages require explicit approval
-  before proceeding. Reads the existing <TICKET>-plan.md artifact as source of
-  truth. Use this skill whenever the user says "implement", "start coding",
-  "proceed with implementation", "/implement", or wants to begin writing code
-  after a plan exists.
+  Vertical-slice implementation with TDD inside each slice. Reads the plan and
+  kanban-board artifacts to determine which slice to implement. Each slice
+  crosses all layers (data → pure → edge → UI → integration) and follows
+  Red-Green-Refactor. Clear context between slices. Use this skill whenever the
+  user says "implement", "start coding", "proceed with implementation",
+  "/implement", or wants to begin implementation after a plan exists.
   Entry point: /implement
 ---
 
 # Implement Skill
 
-Guides implementation stage by stage using the plan artifact as source of truth.
-Each stage is strictly scoped — no stage bleeds into the next. Hard gates require
-explicit approval before proceeding. This enforces the discipline of thinking first
-(done in `/plan`) and pattern-mapping second (done here).
-
-The 5 stages, in order:
-1. **Data model** — types, structs, enums, schemas, interfaces
-2. **Pure logic** — business rules, pure functions, module interactions (no I/O)
-3. **Edge logic** — external integrations, API calls, DB queries, file I/O
-4. **UI components** — presentational components in isolation (skip if no UI)
-5. **Integration** — wire all stages together; verify end-to-end
+Guides implementation one vertical slice at a time using the Kanban board artifact
+as the source of truth. Each slice delivers something testable and crosses all layers.
+TDD is built into the loop (Red → Green → Refactor). Context is cleared between slices
+(Ralph Loop) to keep the main context lean.
 
 ---
 
 ## Gotchas
 
-- If the plan doesn't map cleanly to all 5 stages, make a best-effort decomposition
-  and show it to the user for confirmation before writing any code.
-- Never mix stages — if implementing pure logic reveals a missing type, stop and
-  add it to the data model stage before continuing.
-- Skip inapplicable stages explicitly, never silently: always say
-  "Stage 4 (UI): SKIPPED — no UI components in this plan."
-- If `/check` fails at Stage 5, surface the specific failures and ask the user
-  whether to fix inline or leave for `/review`.
-- **Auto-update progress artifact** after each stage approval. This keeps the progress
-  artifact in sync without manual edits.
+- Never skip the quality gate (Step 4). If the target language has no test framework or
+  type checker, install or configure one before writing any production code.
+- When delegating to `@explorer`, pass the exact file paths and search queries needed.
+  Don't over-ask — one focused exploration call per slice.
+- After each slice completes, run `/clear` before starting the next slice. This keeps the
+  main context in the "smart zone" and avoids context bloat.
+- Pull coding conventions from project AGENTS.md and project memory at the start of each
+  slice (Step 4). Do NOT load them in Step 1 — only the slice's own conventions are needed.
+- If a slice is tagged `afk`, stop at the gate and wait for user input before proceeding.
+- If the last slice completes, mark the artifact as complete and recommend `/review`.
 
 ---
 
-## Helper: Update Progress Artifact
-
-After each stage approval, automatically update the progress artifact and project state.
-Use this helper to:
-1. Mark the completed stage as `complete` with current ISO 8601 timestamp
-2. Mark the next stage as `in_progress`
-3. Save the file
-4. Update `.agents/STATE.md` with decisions made during the stage and the new position
-
-**Script** (run after each stage gate approval):
-
-```bash
-TICKET=$(git branch --show-current | grep -oE '[A-Z]+-[0-9]+')
-PROGRESS_FILE=".agents/artifacts/${TICKET}-impl-progress.md"
-
-# Read current progress artifact
-CONTENT=$(cat "$PROGRESS_FILE")
-
-# Extract frontmatter and table separately
-FRONTMATTER=$(echo "$CONTENT" | sed -n '1,/^---$/p')
-TABLE=$(echo "$CONTENT" | sed -n '/^---$/,/^$/p' | tail -n +3)
-TABLE_AND_BEYOND=$(echo "$CONTENT" | sed -n '/^|/,$p')
-
-# Update the specified stage and next stage in the table
-# Replace "CURRENT_STAGE | ... | pending" with "CURRENT_STAGE | ... | complete | <timestamp>"
-# Replace "NEXT_STAGE | ... | pending" with "NEXT_STAGE | ... | in_progress"
-
-# Helper function to update progress (use in each stage)
-# update_progress_artifact <CURRENT_STAGE_NUM> <NEXT_STAGE_NUM>
-# Example: update_progress_artifact 1 2
-```
-
-For each stage gate, after user approval:
-1. Call this helper with current and next stage numbers
-2. Verify the artifact was updated: `cat .agents/artifacts/${TICKET}-impl-progress.md`
-
----
-
-## Step 1: Load the Plan
+## Step 1: Load Artifacts
 
 Extract the ticket ID from the current branch name:
 
@@ -88,7 +43,7 @@ TICKET=$(git branch --show-current | grep -oE '[A-Z]+-[0-9]+')
 echo "Ticket: ${TICKET:-<none detected>}"
 ```
 
-Read the plan artifact:
+Read the plan artifact for full context:
 
 ```bash
 cat .agents/artifacts/${TICKET}-plan.md 2>/dev/null
@@ -99,7 +54,16 @@ If not found, stop immediately:
 > "No plan artifact found for `${TICKET}`. Run `/plan ${TICKET}` first to generate
 > an implementation plan before proceeding."
 
-If found, display a 2–3 sentence summary of what the plan intends to build.
+Read the Kanban board artifact for slice definitions:
+
+```bash
+cat .agents/artifacts/${TICKET}-kanban-board.md 2>/dev/null
+```
+
+If not found, stop immediately:
+
+> "No kanban-board artifact found for `${TICKET}`. Run `/plan ${TICKET}` first to
+> generate a plan with slice decomposition."
 
 Also check for an existing progress artifact:
 
@@ -107,50 +71,49 @@ Also check for an existing progress artifact:
 cat .agents/artifacts/${TICKET}-impl-progress.md 2>/dev/null
 ```
 
-If found with `status: in_progress` — display the stage table and determine the first
-stage that is not `complete`. Announce:
+If found with `status: in_progress` — display the slice table and determine the first
+slice with `status: pending`. Announce:
 
-> "Resuming implementation — Stages [completed list] are complete. Starting from Stage [N]."
+> "Resuming implementation — Slices [N, M] are complete. Starting from Slice [K]."
 
-Skip directly to that stage's step (Step 3 = Stage 1, Step 4 = Stage 2, etc.).
-Do not re-run completed stages.
+Skip directly to the resume point at Step 4 (Quality Gate).
 
 If found with `status: complete` — warn:
 
-> "Implementation appears already complete (progress artifact status: complete).
-> Run `/review` to review the changes, or continue if you're adding to the work."
+> "Implementation appears already complete. Run `/review` to review the changes,
+> or run `/status` for a full overview."
 
 ---
 
-## Step 2: Decompose into Stages
+## Step 2: Display the Kanban Board
 
-Parse the plan and map each implementation step to one of the 5 stages. Present
-the full breakdown before writing any code:
+Show the slice dependency graph to the user:
 
 ```
-Stage 1 — Data model:
-  - [specific types/schemas from the plan]
+## Kanban Board: <TICKET>
 
-Stage 2 — Pure logic:
-  - [specific functions/modules from the plan]
-
-Stage 3 — Edge logic:
-  - [specific integrations/boundaries from the plan]
-
-Stage 4 — UI components:
-  - [specific components from the plan]
-  OR: SKIPPED — no UI components in this plan
-
-Stage 5 — Integration:
-  - [wiring, E2E tests, final verification]
+| Slice | Title | Blocks | Blocked By | Tags | Status |
+|-------|-------|--------|------------|------|--------|
+| 1     | ...   | [2]    | []         | —    | pending |
+| 2     | ...   | [3]    | [1]        | —    | pending |
+| 3     | ...   | []     | [2]        | afk  | pending |
 ```
 
-Ask: *"Does this stage breakdown look right? Say 'yes' to start Stage 1, or tell
-me what to adjust."*
+Identify which slice(s) are unblocked (no blockers, or all blockers complete):
 
-Do not write any code until the user confirms the breakdown.
+- **First unblocked slice:** Slice [N]
+- **Parallel candidates:** Slices [M, O] can run in parallel if tagged `parallel`
 
-After the user confirms, create the initial progress artifact:
+Ask the user which slice to start with:
+
+> "The first unblocked slice is Slice [N]: [title]. Shall I start there, or skip to
+> a different unblocked slice?"
+
+---
+
+## Step 3: Create Progress Artifact (first slice only)
+
+If no progress artifact exists yet:
 
 ```bash
 mkdir -p .agents/artifacts
@@ -165,179 +128,321 @@ ticket: <TICKET>
 skill: implement
 status: in_progress
 created: <ISO 8601 timestamp>
+current_slice: <SLICE_ID>
+completed_slices: []
 ---
 
-| Stage | Description   | Status   | Completed |
-|-------|---------------|----------|-----------|
-| 1     | Data model    | pending  | —         |
-| 2     | Pure logic    | pending  | —         |
-| 3     | Edge logic    | pending  | —         |
-| 4     | UI components | pending  | —         |
-| 5     | Integration   | pending  | —         |
+## Slice Progress
+
+| Slice | Title | TDD (RGR) | Status | Completed | Checks |
+|-------|-------|-----------|--------|-----------|--------|
+| 1 | <title> | pending | pending | — | — |
+| 2 | <title> | pending | pending | — | — |
+| 3 | <title> | pending | pending | — | — |
 ```
 
 ---
 
-## Step 3: Stage 1 — Data Model
+## Step 4: Quality Gate — Verify Test Infrastructure
 
-**Scope:** Only type definitions, structs, enums, schemas, and interfaces.
-No logic, no functions, no I/O.
-
-1. Announce: "**Stage 1: Data Model** — implementing [list the specific types]"
-2. Write the types only.
-3. Show a summary: which files were changed and what types were added.
-4. Gate:
-
-> "Stage 1 complete. Review the types above — they shape everything that follows.
-> Say 'approved' (or 'next') to move to Stage 2 (Pure Logic), or tell me what
-> to adjust."
-
-Do not proceed until the user explicitly approves.
-
-After approval:
-1. Update the progress artifact automatically:
-   - Mark Stage 1 row: `complete` + current ISO 8601 timestamp
-   - Mark Stage 2 row: `in_progress` (no timestamp yet)
-2. Read the file, update the two rows, write it back
-3. Confirm: "✅ Progress updated — Stage 1 complete, Stage 2 in_progress"
-
----
-
-## Step 4: Stage 2 — Pure Logic
-
-**Scope:** Pure functions and business rules only. No side effects, no I/O,
-no external calls. Functions should be fully described by their name, input
-types, and output types.
-
-1. Announce: "**Stage 2: Pure Logic** — implementing [list the specific functions/modules]"
-2. Write the logic, depending only on types defined in Stage 1.
-3. Show a summary: which files were changed and what functions were added.
-4. Gate:
-
-> "Stage 2 complete. Review the logic above — this is the architecture of the system.
-> Say 'approved' (or 'next') to move to Stage 3 (Edge Logic), or tell me what
-> to adjust."
-
-Do not proceed until the user explicitly approves.
-
-After approval:
-1. Update the progress artifact automatically:
-   - Mark Stage 2 row: `complete` + current ISO 8601 timestamp
-   - Mark Stage 3 row: `in_progress` (no timestamp yet)
-2. Read the file, update the two rows, write it back
-3. Confirm: "✅ Progress updated — Stage 2 complete, Stage 3 in_progress"
-
----
-
-## Step 5: Stage 3 — Edge Logic
-
-**Scope:** External integrations only — API calls, DB queries, file I/O, event
-handlers, network I/O. Minimize this surface. Scrutinize every boundary.
-
-1. Announce: "**Stage 3: Edge Logic** — implementing [list the specific integrations]"
-2. Write the integrations, depending on types from Stage 1 and logic from Stage 2.
-3. Show a summary: which files were changed and what boundaries were introduced.
-4. Gate:
-
-> "Stage 3 complete. Review the external boundaries above — these are where tech
-> debt creeps in. Say 'approved' (or 'next') to move to Stage 4 (UI), or tell
-> me what to adjust."
-
-Do not proceed until the user explicitly approves.
-
-After approval:
-1. Update the progress artifact automatically:
-   - Mark Stage 3 row: `complete` + current ISO 8601 timestamp
-   - Mark Stage 4 row: `in_progress` (no timestamp yet)
-2. Read the file, update the two rows, write it back
-3. Confirm: "✅ Progress updated — Stage 3 complete, Stage 4 in_progress"
-
----
-
-## Step 6: Stage 4 — UI Components
-
-**Scope:** Presentational components in isolation only. No wiring to business
-logic or external state yet.
-
-If no UI components are in scope, skip this stage explicitly:
-
-> "Stage 4 (UI): SKIPPED — no UI components in this plan. Moving to Stage 5."
-> Then wait for user acknowledgment before proceeding.
-> 
-> After acknowledgment, update the progress artifact automatically:
-> - Mark Stage 4 row: `skipped` + current ISO 8601 timestamp
-> - Mark Stage 5 row: `in_progress` (no timestamp yet)
-> - Confirm: "✅ Progress updated — Stage 4 skipped, Stage 5 in_progress"
-
-If applicable:
-1. Announce: "**Stage 4: UI Components** — implementing [list the specific components]"
-2. Write the components in isolation.
-3. Show a summary: which files were changed and what components were added.
-4. Gate:
-
-> "Stage 4 complete. Review the components above.
-> Say 'approved' (or 'next') to move to Stage 5 (Integration), or tell me what
-> to adjust."
-
-Do not proceed until the user explicitly approves.
-
-After approval:
-1. Update the progress artifact automatically:
-   - Mark Stage 4 row: `complete` + current ISO 8601 timestamp
-   - Mark Stage 5 row: `in_progress` (no timestamp yet)
-2. Read the file, update the two rows, write it back
-3. Confirm: "✅ Progress updated — Stage 4 complete, Stage 5 in_progress"
-
----
-
-## Step 7: Stage 5 — Integration
-
-**Scope:** Wire all previous stages together. Connect UI to logic, logic to edge
-integrations, register routes, initialize services — whatever makes it run end-to-end.
-
-1. Announce: "**Stage 5: Integration** — wiring [list the connections being made]"
-2. Write the integration code.
-3. Run the check suite:
+Before writing any code for the current slice, verify the feedback loop infrastructure
+for the target module's language and framework:
 
 ```bash
-# Use /check or detect the stack manually
+# Detect stack
+FILES_CHANGED=<module files for this slice>
+
+# Python
+if echo "$FILES_CHANGED" | grep -q '\.py$'; then
+  echo "=== Python checks ==="
+  uv run pytest --collect-only -q 2>&1 | tail -5
+  uv run ruff check . 2>&1 | tail -5
+  uv run mypy . 2>&1 | tail -5
+fi
+
+# TypeScript/JavaScript
+if echo "$FILES_CHANGED" | grep -qE '\.ts$|\.tsx$|\.js$'; then
+  echo "=== TS/JS checks ==="
+  npm test -- --passWithNoTests 2>&1 | tail -5
+  npm run typecheck 2>&1 | tail -5
+  npm run lint 2>&1 | tail -5
+fi
+
+# Ruby
+if echo "$FILES_CHANGED" | grep -q '\.rb$'; then
+  echo "=== Ruby checks ==="
+  bundle exec rspec --dry-run 2>&1 | tail -5
+  bundle exec rubocop 2>&1 | tail -5
+fi
+```
+
+If any check fails because the tool is missing or not configured, install/configure it.
+If any check fails for pre-existing reasons (not related to the current slice), note
+them as deferred items and proceed.
+
+**If tests exist for the module** — note the test framework and conventions:
+```bash
+# Show a sample test file for conventions
+TEST_FILE=$(find . -path '*/test*' -name "*$(basename $(echo $FILES_CHANGED | head -1 | sed 's/\.py$//' | sed 's/\.ts$//'))*" 2>/dev/null | head -1)
+[ -n "$TEST_FILE" ] && head -30 "$TEST_FILE"
+```
+
+**If no tests exist for the module** — this is the first TDD cycle for this area. Plan
+to write the first test in Step 5.
+
+### Pull Conventions
+
+Load project-specific conventions that apply to this slice:
+
+```bash
+echo "=== Project conventions ==="
+cat AGENTS.md 2>/dev/null | head -50
+cat .agents/conventions.md 2>/dev/null
+```
+
+Extract only the rules relevant to the current slice's language and module type.
+
+---
+
+## Step 5: Explore via @explorer (before Red phase)
+
+Before writing tests or code, delegate exploration of the relevant files to the
+`@explorer` subagent. This keeps expensive file reads out of the main context.
+
+Pass to `@explorer`:
+
+- The slice's `module_interfaces` list from the Kanban board
+- Exact search queries: "Find files matching `<glob pattern>`", "Read file `<path>`"
+- "What is the current state of `<module>`?"
+
+The explorer returns a structured summary of:
+- Files that exist and their contents
+- Existing test files and patterns
+- Any relevant type definitions
+
+Do NOT call `@explorer` more than once per slice — batch all questions into a single call.
+
+---
+
+## Step 6: RED — Write a Failing Test
+
+Write a test that captures the slice's acceptance criterion. The test should fail
+because the production code doesn't exist yet (or doesn't implement the behavior).
+
+Rules:
+- Write exactly one test (or a small group if the slice has multiple facets)
+- The test must be runnable and deterministically fail
+- Do NOT write any production code in this step
+- Follow existing test conventions discovered in Step 4
+
+After writing the test, run it to confirm it fails:
+
+```bash
+# Python
+uv run pytest <test_file> -k <test_name> -v 2>&1 | tail -15
+
+# TypeScript/JavaScript
+npx jest <test_file> --testNamePattern <test_name> 2>&1 | tail -15
+
+# Ruby
+bundle exec rspec <test_file> -e <test_name> 2>&1 | tail -15
+```
+
+Show the failing test output and confirm: *"Test fails as expected (RED). Proceed to GREEN phase?"*
+
+---
+
+## Step 7: GREEN — Implement Minimum Code
+
+Write the minimum production code to pass the test. This crosses all layers relevant
+to the slice — types, logic, edge code, and wiring — but only what's needed to make
+the test pass.
+
+Rules:
+- Write the minimum code — no gold plating, no future-proofing
+- Cross all layers for this slice (not just one stage)
+- Integrate existing modules rather than rewriting them
+- If the plan prescribes a specific implementation, follow it — but only implement
+  enough to pass the test
+
+After writing production code, run the test again to confirm it passes:
+
+```bash
+# Python
+uv run pytest <test_file> -k <test_name> -v 2>&1 | tail -15
+
+# TypeScript/JavaScript
+npx jest <test_file> --testNamePattern <test_name> 2>&1 | tail -15
+
+# Ruby
+bundle exec rspec <test_file> -e <test_name> 2>&1 | tail -15
+```
+
+If the test fails, iterate: fix the production code and re-run. If 3+ attempts fail,
+stop and ask the user for guidance.
+
+Show the passing test: *"Test passes (GREEN). Ready to refactor?"*
+
+---
+
+## Step 8: REFACTOR — Clean Up
+
+With the test passing, refactor both test and production code:
+
+1. Remove duplication
+2. Improve naming
+3. Align with project conventions from Step 4
+4. Check for edge cases that should be tested
+
+After refactoring, run the test again to confirm it still passes:
+
+```bash
+# Run all tests (not just the new one) to check for regressions
+# Python
+uv run pytest 2>&1 | tail -10
+
+# TypeScript/JavaScript
+npx jest --passWithNoTests 2>&1 | tail -10
+
+# Ruby
+bundle exec rspec 2>&1 | tail -10
+```
+
+If any tests fail, revert the refactoring changes and try a more conservative approach.
+
+---
+
+## Step 9: Verify — Run Full Check Suite
+
+Run the full verification suite for the project:
+
+```bash
+# Detect and run verification
 make check 2>/dev/null || make test 2>/dev/null || echo "No check target found"
 ```
 
-4. Report check results:
-   - If passing: proceed to the final message
-   - If failing: surface the specific failures and ask:
-     > "These checks are failing: [list]. Should I fix them now, or leave them for
-     > `/review` to flag?"
-
-5. Show a summary of what was wired up.
-
-6. After checks pass (or user accepts failures), update the progress artifact:
-   - Mark Stage 5 row: `complete` + current ISO 8601 timestamp
-   - Confirm: "✅ Progress updated — Stage 5 complete"
+Report results:
+- **All passing** — proceed to gate
+- **Failures in new code** — fix and re-run
+- **Pre-existing failures** — note as deferred items, proceed
 
 ---
 
-## Step 8: Done
+## Step 10: GATE — Slice Approval
 
-Update the progress artifact to mark the implementation complete:
-1. Set `status: complete` in the frontmatter
-2. Mark Stage 5 as `complete` with the current ISO timestamp (if not already done)
-3. Add `completed: <ISO 8601 timestamp>` field to the frontmatter
-4. Read the file, update it, write it back
-5. Update `.agents/STATE.md` with final status: `position: complete` and any decisions made during integration
+Present the slice summary:
+
+```
+## Slice <N>: <title> Complete
+
+### What was built
+- [file 1]: <what was added/changed>
+- [file 2]: <what was added/changed>
+
+### Tests
+- <test file>: <what was tested>
+- Test count: <N> test(s)
+
+### TDD Cycle
+- RED: <test name> — failed as expected ✅
+- GREEN: <N> iterations — passed ✅
+- REFACTOR: <changes made> ✅
+
+### Verification
+- Lint: ✅/⚠️
+- Types: ✅/⚠️
+- Tests: ✅/⚠️
+
+### Deviations
+- [none / list of Rule N auto-fixes applied]
+```
+
+Gate conditions:
+- **`afk` tag** — stop and wait for user judgment:
+  > "This slice is tagged `afk` — please review and confirm before proceeding."
+- **`hitl` tag** — stop and request human review:
+  > "This slice is tagged `hitl` — please review the AI output and approve or request changes."
+- **No special tags** — standard gate:
+  > "Slice <N> complete. Say 'approved' to continue to the next slice, or tell me what to adjust."
+
+**Do not proceed until the user approves.**
+
+---
+
+## Step 11: Update Progress Artifact
+
+After approval, update the progress artifact:
+
+```bash
+TICKET=$(git branch --show-current | grep -oE '[A-Z]+-[0-9]+')
+PROGRESS_FILE=".agents/artifacts/${TICKET}-impl-progress.md"
+NOW=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+
+# Read current content
+CONTENT=$(cat "$PROGRESS_FILE")
+
+# Update the current slice row: TDD=RGR → done, Status → complete, Completed → now, Checks → pass
+# Find the slice by ID and update its row
+# Set current_slice to the next unblocked slice ID
+# Append slice ID to completed_slices list
+```
+
+Write the updated artifact back and verify:
+
+```bash
+cat .agents/artifacts/${TICKET}-impl-progress.md
+```
+
+Also update `.agents/STATE.md`:
+
+```yaml
+---
+last_updated: <NOW>
+current_branch: <BRANCH>
+position: implement — slice <N> complete
+---
+## Decisions
+- <decisions made during this slice>
+
+## Blockers
+- <if any>
+```
+
+---
+
+## Step 12: Clear and Resume
+
+If there are more slices to implement:
+
+> "Slice <N> is done. Run `/clear` to start fresh, then `/implement` to continue with Slice <M>."
+
+The progress artifact carries state between cleared contexts — `/implement` reads it in Step 1
+and resumes at the correct slice.
+
+---
+
+## Step 13: All Slices Complete
+
+When the last slice is done:
+
+1. Set `status: complete` in the progress artifact frontmatter
+2. Run the full verification suite one final time:
+
+```bash
+make check 2>/dev/null || make test 2>/dev/null
+```
+
+3. Update `.agents/STATE.md` with `position: complete`
 
 Display completion message:
 
 ```
 ## Implementation Complete
 
-Stages completed:
-  ✅ Stage 1 — Data model
-  ✅ Stage 2 — Pure logic
-  ✅ Stage 3 — Edge logic
-  ✅ Stage 4 — UI components   (or: ⏭️  SKIPPED)
-  ✅ Stage 5 — Integration
+Slices completed:
+  ✅ Slice 1 — <title>
+  ✅ Slice 2 — <title>
+  ✅ Slice 3 — <title>
 
 Checks: ✅ passing  (or: ⚠️  see failures above)
 
@@ -348,24 +453,74 @@ Run `/clear` before `/review` to keep review context focused.
 
 ---
 
+## Helper: Quality Gate Script
+
+Reusable check for test infrastructure (Step 4). Run this at the start of each slice:
+
+```bash
+quality_gate() {
+  local lang=$1
+  case "$lang" in
+    python)
+      uv run pytest --collect-only -q 2>/dev/null && echo "pytest: available"
+      uv run ruff check . 2>/dev/null && echo "ruff: available"
+      uv run mypy . 2>/dev/null && echo "mypy: available"
+      ;;
+    typescript)
+      npx jest --passWithNoTests 2>/dev/null && echo "jest: available"
+      npx tsc --noEmit 2>/dev/null && echo "tsc: available"
+      npx eslint . 2>/dev/null && echo "eslint: available"
+      ;;
+    ruby)
+      bundle exec rspec --dry-run 2>/dev/null && echo "rspec: available"
+      bundle exec rubocop 2>/dev/null && echo "rubocop: available"
+      ;;
+  esac
+}
+```
+
+---
+
+## Helper: Pull Conventions Script
+
+Reusable convention puller (Step 4). Run this at the start of each slice:
+
+```bash
+pull_conventions() {
+  local lang=$1
+  echo "=== AGENTS.md ==="
+  grep -A5 "$lang" AGENTS.md 2>/dev/null || true
+  echo "=== Conventions ==="
+  cat .agents/conventions.md 2>/dev/null || echo "(no project conventions)"
+  echo "=== Memory ==="
+  cat ./agents/memory/MEMORY.md 2>/dev/null || true
+  # Load matching full entries
+  for slug in $(grep -oP '(?<=\[)[^\]]+(?=\])' ./agents/memory/MEMORY.md 2>/dev/null); do
+    [ -f "./agents/memory/$slug.md" ] && cat "./agents/memory/$slug.md"
+  done
+}
+```
+
+---
+
 ## Authentication Gate Protocol
 
 Auth errors during execution are *gates*, not bugs. Indicators: "Not authenticated", "Not logged in", "Unauthorized", "401", "403", "Please run {tool} login", "Set {ENV_VAR}".
 
-When encountered during any stage:
+When encountered during any slice:
 1. Recognize it's an auth gate, not a Rule 1 bug
 2. STOP the current task immediately
 3. Show the user exactly what command to run or credential to provide (e.g. `glab auth login`, `huggingface-cli login`, API key name)
 4. Provide a verification command to confirm auth is working
 5. Wait for user to complete the auth step before continuing
 
-Document auth gates as "normal flow" in the stage gate summary, not as deviations.
+Document auth gates as "normal flow" in the slice gate summary, not as deviations.
 
 ---
 
 ## Deviation Rules
 
-While executing a stage, you may discover work not explicitly in the plan. Apply these rules automatically. Track all deviations in the stage summary when presenting for gate approval.
+While executing a slice, you may discover work not explicitly in the plan. Apply these rules automatically. Track all deviations in the slice summary when presenting for gate approval.
 
 **Auto-fix** (no permission needed):
 
@@ -381,18 +536,21 @@ While executing a stage, you may discover work not explicitly in the plan. Apply
 |------|------|----------|
 | 4 | Architectural changes | New DB table (not column), major schema changes, new service layer, switching libraries/frameworks, changing auth approach, new infrastructure, breaking API changes |
 
-Fix inline → add/update tests if applicable → verify fix works → continue task. Document deviations in the stage gate summary using format: `[Rule N - Type] description`.
+Fix inline → add/update tests if applicable → verify fix works → continue task. Document deviations in the slice gate summary using format: `[Rule N - Type] description`.
 
-**Scope boundary:** Only auto-fix issues DIRECTLY caused by the current stage's changes. Pre-existing linting errors or failures in unrelated files are out of scope — log them to .agents/STATE.md as deferred items.
+**Scope boundary:** Only auto-fix issues DIRECTLY caused by the current slice's changes. Pre-existing linting errors or failures in unrelated files are out of scope — log them to .agents/STATE.md as deferred items.
 
-**Fix attempt limit:** After 3 auto-fix attempts on a single issue, stop fixing, document remaining issues in the summary as "Deferred Issues", and continue to the next stage.
+**Fix attempt limit:** After 3 auto-fix attempts on a single issue, stop fixing, document remaining issues in the summary as "Deferred Issues", and continue to the next slice.
 
 ---
 
 ## Quality Bar
 
 A good implementation under this skill should:
-- Keep stages strictly separated — no type definitions in the logic stage, no logic in the UI stage
-- Have a data model small enough to review in one glance (if it's large, the plan has a problem)
-- Leave edge logic as thin as possible — just translate between external and internal representations
-- Pass `/check` at the integration stage before handing off to `/review`
+- Follow TDD: RED → GREEN → REFACTOR, never write production code before a failing test
+- Deliver each slice as a vertical cross-section — types, logic, edge, and wiring in one pass
+- Keep slices small enough to review in one glance
+- Pass the quality gate before writing code
+- Pass full verification before presenting for gate approval
+- Pull conventions (don't push them) — keep implementer context lean
+- Hand off to `/clear` between slices

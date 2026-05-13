@@ -220,6 +220,44 @@ For incremental updates:
 
 ---
 
+## Step 6: Shallow-Module Detection
+
+After surveying the folders, analyse each module for shallow-module patterns and surface
+improvement suggestions alongside the codemap.
+
+A module is "shallow" when it has one or more of these signals:
+
+| Signal | What to look for | Why it matters |
+|--------|------------------|----------------|
+| **One-function file** | A file with exactly one public function, where the function body is <10 lines | File boundary adds ceremony without abstraction — merge into its caller or a related module |
+| **Passthrough re-export** | A file that only imports and re-exports from other modules without adding transformation or selection | Consumers should import from the source directly; the re-export indirection is noise |
+| **Mixed-layer responsibilities** | Functions at different architectural layers (e.g., data access + business logic) in the same file within a layered project | Violates separation of concerns; refactor into separate data and logic files |
+| **Orphan utility** | A utility function defined in its own file that is only used by one caller | Don't generalise prematurely — inline it or move it alongside its sole consumer |
+| **Low file-to-module ratio** | A module directory with 6+ files, each <30 lines, where files share few dependencies | Indicates over-splitting — evaluate whether files can be merged into logical groups |
+
+For each shallow module found, add an improvement suggestion entry to the root atlas:
+
+```markdown
+### Shallow Module Suggestions
+
+| Module | Signal | Suggestion |
+|--------|--------|------------|
+| `<path>` | One-function file | Merge into `<caller path>` or combine with sibling modules |
+| `<path>` | Passthrough re-export | Update consumers to import from `<source path>` directly, remove this file |
+```
+
+If no shallow modules are detected, include a note:
+
+```markdown
+### Shallow Module Suggestions
+
+None detected — module granularity looks balanced.
+```
+
+The suggestions are advisory only. Log them in the atlas; do not modify any files.
+
+---
+
 ## Quality Bar
 
 - **Read-only** — never modify files while mapping
@@ -229,3 +267,5 @@ For incremental updates:
   not generic ("utils", "helpers" — be concrete: "JWT token validation and refresh")
 - **Stable references** — key files should be the canonical public API of each module,
   not one-off scripts
+- **Shallow-module analysis** — always include after survey; flag structural improvements
+  without enforcing them

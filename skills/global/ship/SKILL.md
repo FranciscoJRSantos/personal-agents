@@ -40,7 +40,35 @@ ask the user to confirm they want to proceed anyway, or address them first.
 
 ---
 
-## Step 2: Run Final Check
+## Step 2: Close Plan and Kanban Artifacts
+
+Mark the plan and Kanban board artifacts as `closed` to prevent doc rot. This tells
+downstream skills (status, pipeline-validator) that the ticket has shipped.
+
+```bash
+TICKET=$(git branch --show-current | grep -oE '[A-Z]+-[0-9]+')
+LABEL=${TICKET:-$TICKET}
+CLOSED=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+
+for f in ".agents/artifacts/${LABEL}-plan.md" ".agents/artifacts/${LABEL}-kanban-board.md"; do
+  if [ -f "$f" ]; then
+    sed -i "s/^status: .*/status: closed/" "$f"
+    # Add closed timestamp after the status line if not present
+    grep -q '^closed:' "$f" || sed -i "/^status: /a closed: $CLOSED" "$f"
+    echo "Closed: $f"
+  fi
+done
+```
+
+Also close the impl-progress artifact if it exists:
+
+```bash
+[ -f ".agents/artifacts/${LABEL}-impl-progress.md" ] && sed -i "s/^status: .*/status: closed/" ".agents/artifacts/${LABEL}-impl-progress.md"
+```
+
+---
+
+## Step 3: Run Final Check
 
 ```bash
 make precommit 2>/dev/null || make lint && make type_check && make test
@@ -50,7 +78,7 @@ If checks fail, stop and show the errors. Do not commit broken code.
 
 ---
 
-## Step 3: Build the Commit Message
+## Step 4: Build the Commit Message
 
 Load the plan artifact for context:
 
@@ -72,7 +100,7 @@ Show the proposed commit message and ask the user to confirm or edit before comm
 
 ---
 
-## Step 4: Commit
+## Step 6: Commit
 
 Stage all changes (ask user to confirm staged files first):
 
@@ -96,7 +124,7 @@ EOF
 
 ---
 
-## Step 5: Push
+## Step 7: Push
 
 ```bash
 git push -u origin <BRANCH>
@@ -104,7 +132,7 @@ git push -u origin <BRANCH>
 
 ---
 
-## Step 6: Create Merge Request
+## Step 8: Create Merge Request
 
 ```bash
 glab mr create \

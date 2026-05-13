@@ -56,9 +56,18 @@ git branch -a | grep -i "$TICKET"
 glab mr list --search="$TICKET" --all 2>/dev/null
 ```
 
+Also check for artifacts with `status: closed` (set by `/ship`):
+
+```bash
+for f in .agents/artifacts/${TICKET}-*.md; do
+  [ -f "$f" ] || continue
+  grep -q '^status: closed' "$f" && echo "  $(basename $f): closed"
+done
+```
+
 Classify each ticket as:
 
-- **Safe to remove** — Jira status is Done/Closed/Cancelled, branch deleted, MR merged
+- **Safe to remove** — Jira status is Done/Closed/Cancelled, branch deleted, MR merged, or artifacts have `status: closed`
 - **Probably safe** — MR merged but branch still exists locally (suggest deleting branch too)
 - **Keep** — Ticket still open or in progress
 
@@ -106,7 +115,7 @@ Report what was removed:
 
 ```
 Removed:
-- AIH-1230: ticket.md, plan.md, review-impl.md, tests.md
+- AIH-1230: ticket.md, plan.md, kanban-board.md, review-impl.md
 - AIH-1235: experiment-abc123.md, plan.md
 
 Kept:

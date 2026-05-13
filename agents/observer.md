@@ -10,9 +10,11 @@ category: explore
 mode: subagent
 permission:
   edit:
+    "*": deny
     ".agents/codemap/*": allow
   bash: allow
   webfetch: deny
+  task: deny
 ---
 
 You are the Observer — a quiet caretaker who reads the architecture of a

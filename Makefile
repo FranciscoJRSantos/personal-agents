@@ -127,7 +127,7 @@ lint-docs:
 	@ok=true; \
 	echo "=== Checking skill references in AGENTS.md ==="; \
 	for ref in $$(grep -oP '\x60/\K[^/\x60 ,]+' AGENTS.md 2>/dev/null | sort -u); do \
-		case "$$ref" in skill-name|agent-name|TICKET|RUN|slug|type|query|range|name|decision|rule) continue ;; esac; \
+		case "$$ref" in skill-name|agent-name|TICKET|RUN|slug|type|query|range|name|decision|rule|clear) continue ;; esac; \
 		if [ ! -f "$(GLOBAL_SKILLS)/$$ref/SKILL.md" ]; then \
 			echo "FAIL  skill '$$ref' referenced in AGENTS.md but skills/global/$$ref/SKILL.md not found"; \
 			ok=false; \
@@ -145,6 +145,9 @@ lint-docs:
 			echo "INFO  $$agent not referenced in AGENTS.md"; \
 		fi \
 	done; \
+	echo ""; \
+	echo "=== Checking skill references in AGENTS.md (strict) ==="; \
+	echo "  Note: /test has been removed (absorbed into /implement + TDD)"; \
 	echo ""; \
 	echo "=== Checking artifact chain integrity ==="; \
 	grep -oP '\x60<TICKET>-[^\x60]+\x60\s*\|\s*\x60/\w+' AGENTS.md 2>/dev/null \

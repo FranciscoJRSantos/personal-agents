@@ -27,12 +27,77 @@ Skills communicate via `.agents/artifacts/` files — each reads the previous st
 | Artifact                       | Written by    | Read by                                                |
 |--------------------------------|---------------|--------------------------------------------------------|
 | `<TICKET>-ticket.md`           | `/refine`     | `/plan`                                                |
-| `<TICKET>-plan.md`             | `/plan`       | `/branch`, `/review`, `/test`, `/ship`, `/experiment`  |
+| `<TICKET>-plan.md`             | `/plan`       | `/branch`, `/review`, `/ship`, `/experiment`, `/status`|
+| `<TICKET>-kanban-board.md`     | `/plan`       | `/implement`, `/status`, `pipeline-validator`          |
 | `<TICKET>-experiment-<RUN>.md` | `/experiment` | `/report`                                              |
 | `<TICKET>-review-impl.md`      | `/review`     | `/ship`                                                |
-| `<TICKET>-tests.md`            | `/test`       | —                                                      |
 | `<TICKET>-impl-progress.md`    | `/implement`  | `/implement` (resume), `/status`, `pipeline-validator` |
 | `quick-<slug>-progress.md`     | `/quick`      | `/status`                                              |
+
+### Kanban Board Schema
+
+The Kanban board produced by `/plan` defines vertical slices with blocking relationships for parallel execution:
+
+```yaml
+---
+artifact: kanban-board
+ticket: <TICKET>
+skill: plan
+created: <ISO 8601 timestamp>
+status: active
+slices:
+  - id: 1
+    title: <slice title>
+    description: <what this slice delivers, crossing all layers>
+    blocks: [<slice IDs that depend on this>]
+    blocked_by: [<slice IDs this depends on>]
+    module_interfaces:
+      - module: <file path>
+        public_interface: <methods/types exported>
+        test_boundaries: <what to test at the boundary>
+    tags: [afk|hitl|parallel]
+    status: pending
+    completed: <ISO 8601 timestamp or null>
+---
+```
+
+### Vertical Slice impl-progress Schema
+
+Updated progress artifact for slice-based implementation:
+
+```yaml
+---
+artifact: impl-progress
+ticket: <TICKET>
+skill: implement
+status: in_progress
+created: <ISO 8601 timestamp>
+current_slice: <slice ID>
+completed_slices: []
+---
+
+## Slice Progress
+
+| Slice | Title | TDD (RGR) | Status | Completed | Checks |
+|-------|-------|-----------|--------|-----------|--------|
+| 1 | <title> | done | complete | <timestamp> | pass |
+| 2 | <title> | done | in_progress | — | — |
+| 3 | <title> | pending | pending | — | — |
+```
+
+`status` values: `pending`, `in_progress`, `complete`, `skipped`
+`TDD (RGR)` values: `pending`, `done`, `skipped`
+`Checks` values: `pass`, `fail`, `—`
+
+## Kanban Board State
+
+The Kanban board file (`<TICKET>-kanban-board.md`) tracks which slices are blockable and which can run in parallel:
+
+- **`afk`** tag: slice requires user judgment (parameter selection, design decisions)
+- **`hitl`** tag: slice needs human review of AI output
+- **`parallel`** tag: slice has no blocking relationships — can run in parallel with other `parallel` slices
+
+Slices with `blocked_by: []` (no blockers) can start immediately. Slices with `blocked_by: [N]` must wait until slice N is `complete`.
 
 ## Execution Rules
 
@@ -77,7 +142,7 @@ position: <what stage of what workflow>
 - <items logged during deviation handling>
 ```
 
-Written by: `/implement` (stage gates), `/hotfix` (on completion), `/quick` (on completion)
+Written by: `/implement` (slice gates), `/hotfix` (on completion), `/quick` (on completion)
 Read by: `/status` (displays in dashboard)
 
 Skills should update STATE.md when making decisions or hitting blockers. Keep it lean — decisions, blockers, and position only.
@@ -85,10 +150,22 @@ Skills should update STATE.md when making decisions or hitting blockers. Keep it
 ## Typical Workflow
 
 ```
-/branch TICKET → /plan → /implement → /check → /review → /test → /ship
+/branch TICKET → /plan → /implement → /check → /review → /ship
 ```
 
 For unfamiliar codebases, start with `/codemap` to understand the structure first.
+
+### Inside `/implement`: Vertical Slice Loop
+
+Each slice follows a TDD cycle with clear-and-resume between slices:
+
+1. **Quality gate** — verify test framework, type checking, linting exist for target module
+2. **Plan via @explorer** — use `@explorer` subagent for file-heavy reconnaissance within the slice
+3. **Red** — write a failing test for the slice's acceptance criterion
+4. **Green** — implement the minimum code to pass the test (across all layers)
+5. **Refactor** — clean up, check conventions pulled from memory/AGENTS.md
+6. **Verify** — run checks (lint, types, tests)
+7. **Gate** — present slice for approval, then `/clear` before next slice
 
 ## Review Rules Override
 

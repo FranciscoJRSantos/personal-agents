@@ -1,14 +1,14 @@
 {
   "quick": {
-    "model": "github-copilot/claude-haiku-4.5",
-    "description": "Fast, trivial tasks"
+    "model": "opencode-go/deepseek-v4-flash",
+    "description": "Fast, high-throughput tasks"
   },
   "deep": {
-    "model": "github-copilot/claude-sonnet-4.6",
-    "description": "Complex reasoning, thorough research"
+    "model": "opencode-go/glm-5",
+    "description": "Complex reasoning, thorough analysis"
   },
   "explore": {
-    "model": "github-copilot/gemini-2.5-pro",
+    "model": "opencode-go/qwen3.6-plus",
     "description": "Codebase exploration and understanding"
   }
 }

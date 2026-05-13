@@ -56,6 +56,7 @@ done
 
 Track which of these expected types are **present** vs **missing**:
 - `<TICKET>-plan.md` — **required** before ship
+- `<TICKET>-kanban-board.md` — **required** before ship (must have `status: closed` for shipped tickets)
 - `<TICKET>-review-impl.md` — **required** before ship
 - `<TICKET>-ticket.md` — optional (only present if `/refine` was run)
 - `<TICKET>-impl-progress.md` — optional (present if `/implement` was run)
@@ -76,7 +77,7 @@ echo "Commits ahead of main: $COMMITS_AHEAD"
 ### plan.md
 
 - **Present?** → PASS if yes, FAIL (MISSING) if no
-- **Status field** → PASS if `status: posted`, WARN if any other value
+- **Status field** → PASS if `status: posted` or `status: closed`, WARN if any other value
 - **TBD thresholds** → scan for placeholder values:
 
 ```bash
@@ -84,6 +85,18 @@ grep -inE '\bTBD\b|to be determined|to be defined' .agents/artifacts/${TICKET}-p
 ```
 
 → FAIL if any matches found; list the matching lines
+
+### kanban-board.md
+
+- **Present?** → PASS if yes, FAIL (MISSING) if no
+- **Status field** → PASS if `status: active` or `status: closed`, WARN if any other value
+- **Slice completeness** → check that no slice has `status: in_progress` when a review artifact also exists (implementation may be incomplete)
+
+```bash
+grep -A2 'status: in_progress' .agents/artifacts/${TICKET}-kanban-board.md 2>/dev/null
+```
+
+→ WARN if in-progress slices found alongside a review artifact
 
 ### review-impl.md
 
@@ -102,7 +115,7 @@ cover recent changes)
 ### impl-progress.md (if present)
 
 - **Status field** → WARN if `in_progress` when a review artifact also exists (implementation may be incomplete)
-- **Stage flow** → check that no later stage is `complete` while an earlier stage is still `pending` (indicates a gap):
+- **Slice flow** → check that no later slice is `complete` while an earlier slice is still `pending` (indicates a gap):
 
 ```bash
 grep -E 'complete|in_progress|pending' .agents/artifacts/${TICKET}-impl-progress.md 2>/dev/null
@@ -134,8 +147,9 @@ Structure output as:
 | Artifact              | Present | Status Field   | Health Check                  | Result   |
 |-----------------------|---------|----------------|-------------------------------|----------|
 | plan.md               | Yes/No  | posted / —     | No TBD thresholds             | PASS/FAIL |
+| kanban-board.md       | Yes/No  | active / —     | No in-progress slices w/ review| PASS/WARN |
 | review-impl.md        | Yes/No  | clean / …      | Created after last commit     | PASS/FAIL |
-| impl-progress.md      | Yes/No  | complete / …   | No stage flow gaps            | PASS/WARN |
+| impl-progress.md      | Yes/No  | complete / …   | No slice flow gaps            | PASS/WARN |
 | experiment-<run>.md   | Yes/No  | —              | Metrics numeric, run ID set   | PASS/FAIL |
 
 ## Issues Found

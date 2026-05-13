@@ -75,12 +75,20 @@ for f in .agents/artifacts/${LABEL}-*.md; do
   echo "  $name  (status: ${status:-unknown})"
 done
 
+# Surface kanban board for slice overview
+KANBAN=".agents/artifacts/${LABEL}-kanban-board.md"
+if [ -f "$KANBAN" ]; then
+  ACTIVE_SLICES=$(grep -c 'status: pending\|status: in_progress' "$KANBAN" 2>/dev/null || echo 0)
+  COMPLETED=$(grep -c 'status: complete' "$KANBAN" 2>/dev/null || echo 0)
+  echo "  kanban-board: $ACTIVE_SLICES pending, $COMPLETED complete"
+fi
+
 # Surface impl-progress stage for Step 4 routing
 PROG=".agents/artifacts/${LABEL}-impl-progress.md"
 if [ -f "$PROG" ]; then
   IMPL_STATUS=$(grep -m1 '^status:' "$PROG" | awk '{print $2}')
-  NEXT_STAGE=$(awk -F'|' '/in_progress/{gsub(/ /,"",$2); print $2; exit}' "$PROG")
-  echo "  impl-progress: status=$IMPL_STATUS  next-stage=$NEXT_STAGE"
+  CURRENT_SLICE=$(grep -m1 '^current_slice:' "$PROG" | awk '{print $2}')
+  echo "  impl-progress: status=$IMPL_STATUS  current-slice=$CURRENT_SLICE"
 fi
 ```
 
@@ -156,8 +164,8 @@ Keep it scannable — one line per area, no extra prose.
 Derive the recommendation from what's present and what's missing. Use the **first matching** rule:
 
 1. **No plan artifact** and ticket exists → "Run `/plan <TICKET>` to generate an implementation plan."
-2. **Plan exists, no impl-progress artifact, zero commits ahead of main** → "Plan is ready — run `/implement` to begin."
-2a. **Plan exists, impl-progress artifact with `status: in_progress`** → "Implementation in progress — resume Stage [N] (from progress artifact). Run `/implement` to continue."
+2. **Plan and kanban-board exist, no impl-progress artifact, zero commits ahead of main** → "Plan is ready — run `/implement` to begin."
+2a. **Plan and kanban-board exist, impl-progress artifact with `status: in_progress`** → "Implementation in progress — resume Slice [N] (from progress artifact). Run `/implement` to continue."
 2b. **Plan exists, impl-progress artifact with `status: complete`, no review artifact** → (fall through to rule 3)
 3. **Commits exist, no review artifact** → "Run `/review` to review your changes."
 4. **Review artifact with `status: has-findings`** → "Address the review findings, then re-run `/review`."
@@ -165,7 +173,8 @@ Derive the recommendation from what's present and what's missing. Use the **firs
 6. **MR exists, CI failing** → "CI is failing — check the pipeline logs with `/gitlab`."
 7. **MR exists, CI passing, not merged** → "MR is ready — request a reviewer or merge."
 8. **MR merged** → "Work is shipped. Switch back to main."
-9. **On main with nothing** → see Step 5.
+9. **Artifacts with `status: closed`** → "This ticket has been shipped (artifacts are closed)."
+10. **On main with nothing** → see Step 5.
 
 Present the recommendation as a single bold line below the dashboard:
 

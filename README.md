@@ -114,9 +114,9 @@ OpenCode plugins fire on lifecycle events. They live in `plugins/` and are regis
 
 ```json
 {
-  "quick":  { "model": "haiku"  },
-  "deep":   { "model": "sonnet" },
-  "heavy":  { "model": "opus"   }
+  "quick":   { "model": "opencode-go/deepseek-v4-flash" },
+  "deep":    { "model": "opencode-go/glm-5"            },
+  "explore": { "model": "opencode-go/qwen3.6-plus"      }
 }
 ```
 
