@@ -6,7 +6,7 @@ description: >
   (PR review), otherwise uses git diff against main (self-review). Returns
   structured findings grouped by severity with GATE verdict. Tab-switchable
   as primary agent for sustained review sessions.
-category: deep
+model: github-copilot/claude-sonnet-4.6
 mode: all
 permission:
   edit: deny

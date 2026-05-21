@@ -194,7 +194,7 @@ Do **not** write the file yet.
 After the user says 'save' (or 'approved', 'yes', 'lgtm'):
 
 1. Create the directory and write the file:
-   - Skill → `skills/global/<name>/SKILL.md`
+   - Skill → `skills/<name>/SKILL.md`
    - Agent → `agents/<name>.md`
 
 2. Run the appropriate lint target:

@@ -468,7 +468,7 @@ slices:
 ---
 ```
 
-This artifact is read by `/implement` (to know which slice to work on), `/status` (to show progress), and `pipeline-validator` (to check artifact health).
+This artifact is read by `/implement` (to know which slice to work on) and `/status` (to show progress).
 
 Run `/clear` before `/implement` to start implementation in a fresh context window.
 

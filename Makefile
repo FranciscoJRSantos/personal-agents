@@ -1,4 +1,4 @@
-GLOBAL_SKILLS      := skills/global
+GLOBAL_SKILLS      := skills
 
 AGENTS_SRC         := agents
 AGENTS_PARTIALS    := agents/partials
@@ -6,8 +6,6 @@ AGENTS_DIR         ?= $(HOME)/.agents
 
 OPENCODE_SKILLS_DIR ?= $(HOME)/.config/opencode/skills
 OPENCODE_AGENTS_DIR  ?= $(HOME)/.config/opencode/agents
-
-CATEGORIES_FILE     := categories.json
 
 .PHONY: deploy deploy-opencode deploy-agents pull pull-skills pull-agents setup setup-opencode list-skills lint-skills list-agents lint-agents lint-docs
 
@@ -20,11 +18,11 @@ deploy-opencode: setup-opencode
 	mkdir -p $(OPENCODE_SKILLS_DIR)
 	rsync -av --delete $(GLOBAL_SKILLS)/ $(OPENCODE_SKILLS_DIR)/
 	@echo "Deploying agents to $(OPENCODE_AGENTS_DIR)..."
-	@scripts/deploy-agents.sh "$(AGENTS_SRC)" "$(OPENCODE_AGENTS_DIR)" "$(CATEGORIES_FILE)" --md-only
+	@scripts/deploy-agents.sh "$(AGENTS_SRC)" "$(OPENCODE_AGENTS_DIR)" --md-only
 
 ## Agents → ~/.agents/ (canonical, includes partials and memory)
 deploy-agents:
-	@scripts/deploy-agents.sh "$(AGENTS_SRC)" "$(AGENTS_DIR)" "$(CATEGORIES_FILE)"
+	@scripts/deploy-agents.sh "$(AGENTS_SRC)" "$(AGENTS_DIR)"
 
 ## Pull changes back from deployed locations
 pull: pull-skills pull-agents
@@ -54,7 +52,7 @@ setup-opencode:
 
 ## List all skills
 list-skills:
-	@echo "Global ($(shell ls $(GLOBAL_SKILLS) 2>/dev/null | wc -l) skills):" && ls $(GLOBAL_SKILLS)/ 2>/dev/null || echo "(no skills)"
+	@echo "Custom ($(shell ls $(GLOBAL_SKILLS) 2>/dev/null | wc -l) skills):" && ls $(GLOBAL_SKILLS)/ 2>/dev/null || echo "(no skills)"
 
 ## List all agents
 list-agents:
@@ -110,12 +108,6 @@ lint-agents:
 		if ! echo "$$fm" | yq eval -e 'select(di==0) | .permission' >/dev/null 2>&1; then \
 			echo "WARN  $$agent: missing 'permission:' block (needed for opencode)"; \
 		fi; \
-		category=$$(echo "$$fm" | yq eval 'select(di==0) | .category // ""' | grep -v '^null$$' | head -1); \
-		if [ -n "$$category" ] && [ "$$category" != '""' ]; then \
-			if ! jq -e '.["'"$$category"'"]' "$(CATEGORIES_FILE)" >/dev/null 2>&1; then \
-				echo "WARN  $$agent: category '$$category' not defined in categories.json"; \
-			fi \
-		fi; \
 		if [ -n "$$description" ] && [ "$$description" != '""' ]; then \
 			echo "OK    $$agent"; \
 		fi \
@@ -129,7 +121,7 @@ lint-docs:
 	for ref in $$(grep -oP '\x60/\K[^/\x60 ,]+' AGENTS.md 2>/dev/null | sort -u); do \
 		case "$$ref" in skill-name|agent-name|TICKET|RUN|slug|type|query|range|name|decision|rule|clear) continue ;; esac; \
 		if [ ! -f "$(GLOBAL_SKILLS)/$$ref/SKILL.md" ]; then \
-			echo "FAIL  skill '$$ref' referenced in AGENTS.md but skills/global/$$ref/SKILL.md not found"; \
+			echo "FAIL  skill '$$ref' referenced in AGENTS.md but $(GLOBAL_SKILLS)/$$ref/SKILL.md not found"; \
 			ok=false; \
 		else \
 			echo "OK    /$$ref"; \
@@ -139,7 +131,7 @@ lint-docs:
 	echo "=== Checking agent references in AGENTS.md ==="; \
 	for f in $(AGENTS_SRC)/*.md; do \
 		agent=$$(basename "$$f" .md); \
-		if grep -qF "\`$$agent\`" AGENTS.md; then \
+		if grep -qE "\`@?$$agent\`" AGENTS.md; then \
 			echo "OK    $$agent"; \
 		else \
 			echo "INFO  $$agent not referenced in AGENTS.md"; \
@@ -147,7 +139,6 @@ lint-docs:
 	done; \
 	echo ""; \
 	echo "=== Checking skill references in AGENTS.md (strict) ==="; \
-	echo "  Note: /test has been removed (absorbed into /implement + TDD)"; \
 	echo ""; \
 	echo "=== Checking artifact chain integrity ==="; \
 	grep -oP '\x60<TICKET>-[^\x60]+\x60\s*\|\s*\x60/\w+' AGENTS.md 2>/dev/null \

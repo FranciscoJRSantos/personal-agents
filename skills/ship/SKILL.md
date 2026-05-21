@@ -43,11 +43,11 @@ ask the user to confirm they want to proceed anyway, or address them first.
 ## Step 2: Close Plan and Kanban Artifacts
 
 Mark the plan and Kanban board artifacts as `closed` to prevent doc rot. This tells
-downstream skills (status, pipeline-validator) that the ticket has shipped.
+downstream consumers that the ticket has shipped.
 
 ```bash
 TICKET=$(git branch --show-current | grep -oE '[A-Z]+-[0-9]+')
-LABEL=${TICKET:-$TICKET}
+LABEL=${TICKET:-$BRANCH}
 CLOSED=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
 
 for f in ".agents/artifacts/${LABEL}-plan.md" ".agents/artifacts/${LABEL}-kanban-board.md"; do
@@ -100,7 +100,7 @@ Show the proposed commit message and ask the user to confirm or edit before comm
 
 ---
 
-## Step 6: Commit
+## Step 5: Commit
 
 Stage all changes (ask user to confirm staged files first):
 
@@ -124,7 +124,7 @@ EOF
 
 ---
 
-## Step 7: Push
+## Step 6: Push
 
 ```bash
 git push -u origin <BRANCH>
@@ -132,7 +132,7 @@ git push -u origin <BRANCH>
 
 ---
 
-## Step 8: Create Merge Request
+## Step 7: Create Merge Request
 
 ```bash
 glab mr create \

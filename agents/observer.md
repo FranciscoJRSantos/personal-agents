@@ -6,7 +6,7 @@ description: >
   detects structural changes and incrementally refreshes per-folder codemaps
   and the root atlas. Falls back to raw exploration if no codemap exists yet.
   Entry point: @observer <question> | @observer update
-category: explore
+model: opencode-go/glm-5.1
 mode: subagent
 permission:
   edit:

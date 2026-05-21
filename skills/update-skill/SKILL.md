@@ -26,7 +26,7 @@ which will overwrite any changes made outside the repo on the next deploy.
 
 Open the skill or agent file in the source repo:
 
-- Skills: `skills/global/<name>/SKILL.md`
+- Skills: `skills/<name>/SKILL.md`
 - Agents: `agents/<name>.md`
 
 **Step 2 — Lint**

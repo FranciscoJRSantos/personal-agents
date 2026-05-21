@@ -23,8 +23,7 @@ TDD is built into the loop (Red → Green → Refactor). Context is cleared betw
 
 - Never skip the quality gate (Step 4). If the target language has no test framework or
   type checker, install or configure one before writing any production code.
-- When delegating to `@explorer`, pass the exact file paths and search queries needed.
-  Don't over-ask — one focused exploration call per slice.
+- When exploring the module before the Red phase, read the relevant files directly. One focused exploration pass per slice.
 - After each slice completes, run `/clear` before starting the next slice. This keeps the
   main context in the "smart zone" and avoids context bloat.
 - Pull coding conventions from project AGENTS.md and project memory at the start of each
@@ -204,23 +203,15 @@ Extract only the rules relevant to the current slice's language and module type.
 
 ---
 
-## Step 5: Explore via @explorer (before Red phase)
+## Step 5: Explore the Module (before Red phase)
 
-Before writing tests or code, delegate exploration of the relevant files to the
-`@explorer` subagent. This keeps expensive file reads out of the main context.
+Before writing tests or code, read the relevant module files directly (see Gotchas —
+one focused exploration pass per slice). Use the slice's `module_interfaces` list from
+the Kanban board:
 
-Pass to `@explorer`:
-
-- The slice's `module_interfaces` list from the Kanban board
-- Exact search queries: "Find files matching `<glob pattern>`", "Read file `<path>`"
-- "What is the current state of `<module>`?"
-
-The explorer returns a structured summary of:
-- Files that exist and their contents
-- Existing test files and patterns
-- Any relevant type definitions
-
-Do NOT call `@explorer` more than once per slice — batch all questions into a single call.
+- Read each file listed under `module: <file path>`
+- Search for existing test files that cover the module
+- Note existing type definitions, function signatures, and conventions
 
 ---
 

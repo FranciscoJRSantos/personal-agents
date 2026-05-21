@@ -5,9 +5,8 @@
 Two extension types: **skills** (slash commands, run in main conversation, write artifacts) and **agents** (isolated subagents, run in own context, return findings only).
 
 ```
-skills/global/<name>/SKILL.md   ← one skill per file
+skills/<name>/SKILL.md   ← one skill per file
 agents/<name>.md                ← one agent per file
-categories.json                 ← category name → model mapping
 ```
 
 `make deploy` syncs skills to `~/.config/opencode/skills/` and agents to `~/.config/opencode/agents/` and `~/.agents/`. OpenCode discovers both automatically.
@@ -24,15 +23,15 @@ categories.json                 ← category name → model mapping
 
 Skills communicate via `.agents/artifacts/` files — each reads the previous step's output:
 
-| Artifact                       | Written by    | Read by                                                |
-|--------------------------------|---------------|--------------------------------------------------------|
-| `<TICKET>-ticket.md`           | `/refine`     | `/plan`                                                |
-| `<TICKET>-plan.md`             | `/plan`       | `/branch`, `/review`, `/ship`, `/experiment`, `/status`|
-| `<TICKET>-kanban-board.md`     | `/plan`       | `/implement`, `/status`, `pipeline-validator`          |
-| `<TICKET>-experiment-<RUN>.md` | `/experiment` | `/report`                                              |
-| `<TICKET>-review-impl.md`      | `/review`     | `/ship`                                                |
-| `<TICKET>-impl-progress.md`    | `/implement`  | `/implement` (resume), `/status`, `pipeline-validator` |
-| `quick-<slug>-progress.md`     | `/quick`      | `/status`                                              |
+| Artifact                            | Written by    | Read by                                                |
+|-------------------------------------|---------------|--------------------------------------------------------|
+| `grill-<slug>-decisions.md`         | `/grill-me`   | `/refine`, `/plan`                                     |
+| `<TICKET>-ticket.md`                | `/refine`     | `/plan`                                                |
+| `<TICKET>-plan.md`                  | `/plan`       | `/review`, `/ship`, `/experiment`                      |
+| `<TICKET>-kanban-board.md`          | `/plan`       | `/implement`                                           |
+| `<TICKET>-experiment-<RUN>.md`      | `/experiment` | `/report`, `experiment-analyzer`                       |
+| `<TICKET>-review-impl.md`           | `/review`     | `/ship`                                                |
+| `<TICKET>-impl-progress.md`         | `/implement`  | `/implement` (resume)                                  |
 
 ### Kanban Board Schema
 
@@ -120,7 +119,7 @@ Two storage locations:
 Each location has a compact `MEMORY.md` index (~50-150 tokens) that skills load to assess relevance, followed by full `.md` files loaded on-demand for matching entries. Index format: `- [Name](slug.md) \`#tags\` — one-line hook`
 
 Memory CRUD skills: `/new-memory`, `/recall`, `/forget`, `/memories`
-Skills that proactively load the index: `/plan`, `/status`, `/standup`
+Skills that proactively load the index: `/plan`
 
 ## Project State
 
@@ -142,15 +141,15 @@ position: <what stage of what workflow>
 - <items logged during deviation handling>
 ```
 
-Written by: `/implement` (slice gates), `/hotfix` (on completion), `/quick` (on completion)
-Read by: `/status` (displays in dashboard)
+Written by: `/implement` (slice gates)
+Read by: all skills that need cross-session context
 
 Skills should update STATE.md when making decisions or hitting blockers. Keep it lean — decisions, blockers, and position only.
 
 ## Typical Workflow
 
 ```
-/branch TICKET → /plan → /implement → /check → /review → /ship
+/refine → /plan → /implement → /check → /review → /ship
 ```
 
 For unfamiliar codebases, start with `/codemap` to understand the structure first.
@@ -160,7 +159,7 @@ For unfamiliar codebases, start with `/codemap` to understand the structure firs
 Each slice follows a TDD cycle with clear-and-resume between slices:
 
 1. **Quality gate** — verify test framework, type checking, linting exist for target module
-2. **Plan via @explorer** — use `@explorer` subagent for file-heavy reconnaissance within the slice
+2. **Explore** — read the relevant module files directly to understand current state before writing tests
 3. **Red** — write a failing test for the slice's acceptance criterion
 4. **Green** — implement the minimum code to pass the test (across all layers)
 5. **Refactor** — clean up, check conventions pulled from memory/AGENTS.md
@@ -170,3 +169,10 @@ Each slice follows a TDD cycle with clear-and-resume between slices:
 ## Review Rules Override
 
 The `reviewer` agent (Tab-switchable primary agent, also delegatable as subagent) loads shared rules from `~/.agents/partials/review-rules.md`. Create `.agents/review.md` in the project root to add project-specific review rules — it takes precedence over the shared defaults when present. Template at `templates/review.md.example`.
+
+## Subagent Reference
+
+| Agent | Invocation | Purpose |
+|-------|-----------|---------|
+| `@observer` | `@observer <question>` or `@observer update` | Maintain and explain codebase via codemaps |
+| `@experiment-analyzer` | Before `/report` | Validate ML metrics against plan thresholds |
