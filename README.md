@@ -42,9 +42,9 @@ make deploy   # sync skills and agents to OpenCode
 
 | Skill                | Invocation                                | Purpose                                                                 | Workflow    |
 |----------------------|-------------------------------------------|-------------------------------------------------------------------------|-------------|
+| `/grill-me`          | `/grill-me [topic]`                       | Stress-test a design through adversarial decision-tree conversation     | Kickstarter |
 | `/refine`            | `/refine [TICKET]`                        | Refine a Jira ticket interactively                                      | Ticket / ML |
 | `/plan`              | `/plan TICKET`                            | Generate type-aware implementation plan → Jira comment                  | Ticket / ML |
-| `/grill-me`          | `/grill-me [topic]`                       | Stress-test a design through adversarial decision-tree conversation     | Kickstarter |
 | `/implement`         | `/implement`                              | Staged implementation with hard gates between 5 phases                  | Ticket      |
 | `/review`            | `/review`                                 | Severity-grouped code review vs main                                    | Ticket      |
 | `/check`             | `/check`                                  | Lint + type check + tests (auto-detects stack)                          | Ticket      |
@@ -99,8 +99,8 @@ OpenCode plugins fire on lifecycle events. They live in `plugins/` and are regis
 | Plugin               | Event                             | Purpose                                                |
 |----------------------|-----------------------------------|--------------------------------------------------------|
 | `auto-lint.ts`       | `tool.execute.after` (Write)      | Runs project linter on edited JS/TS files              |
-| `session-context.ts` | `session.created`                 | Injects impl-progress context when a session starts    |
 | `write-guard.ts`     | `tool.execute.before` (Write)     | Blocks Write tool on existing files (use Edit instead) |
+| `session-context.ts` | `session.created`                 | Injects impl-progress context when a session starts    |
 
 ---
 

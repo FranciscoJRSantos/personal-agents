@@ -16,6 +16,34 @@ Nothing is written to Jira until the user explicitly approves.
 
 ---
 
+## Step 0: Load Relevant Memory
+
+Before fetching the ticket, load both memory indices and scan for relevant context:
+
+```bash
+GLOBAL_MEM=~/.agents/memory/MEMORY.md
+PROJECT_MEM=./.agents/memory/MEMORY.md
+
+echo "=== Global Memory ==="
+[ -f "$GLOBAL_MEM" ] && cat "$GLOBAL_MEM"
+
+echo "=== Project Memory ==="
+[ -f "$PROJECT_MEM" ] && cat "$PROJECT_MEM"
+```
+
+Scan index entries for matches related to the ticket or project. For each match,
+deep-load the full file:
+
+```bash
+cat ~/.agents/memory/<matched-slug>.md
+cat ./.agents/memory/<matched-slug>.md
+```
+
+Use recalled context in later steps (e.g., past decisions about similar work,
+known constraints, stakeholder preferences).
+
+---
+
 ## Step 1: Determine Entry Point
 
 **If a ticket ID was provided** (e.g. `/refine PROJ-123`):

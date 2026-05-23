@@ -8,7 +8,9 @@ description: >
 model: opencode-go/kimi-k2.6
 mode: subagent
 permission:
-  edit: deny
+  edit:
+    "*": deny
+    ".agents/**": allow
   bash: allow
   webfetch: deny
   task: deny

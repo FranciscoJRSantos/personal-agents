@@ -108,9 +108,13 @@ These apply globally across all skills and agents.
 
 **Deviation Rules:** During execution, auto-fix bugs and missing critical functionality (error handling, validation, auth) without asking. Only stop for architectural decisions (new tables, framework changes, breaking API changes).
 
+## SpotMe Integration
+
+SpotMe is a plugin that intercepts code writes and scaffolds exercises for the human. When active, `/implement` switches to gym mode during green phases. See `.agents/conventions.md` for toggle rules. SpotMe does not interfere with artifact writes or tool calls to non-code files.
+
 ## Memory Store
 
-Skills and agents can save and retrieve persistent memories that survive across sessions.
+Skills and agents save and retrieve persistent memories that survive across sessions.
 
 Two storage locations:
 - `~/.agents/memory/` — global memories (user preferences, cross-project feedback)
@@ -118,8 +122,24 @@ Two storage locations:
 
 Each location has a compact `MEMORY.md` index (~50-150 tokens) that skills load to assess relevance, followed by full `.md` files loaded on-demand for matching entries. Index format: `- [Name](slug.md) \`#tags\` — one-line hook`
 
-Memory CRUD skills: `/new-memory`, `/recall`, `/forget`, `/memories`
-Skills that proactively load the index: `/plan`
+Memory capacity budget: 30 entries or 6KB total per MEMORY.md index (soft limit — warns when exceeded).
+
+### Auto-Write Behavior
+
+Memories and rules are written automatically without confirmation, triggered by:
+- User corrections to agent's approach ("no", "wrong", "actually", "don't do that")
+- Environment discoveries (OS, tool versions, paths, quirks)
+- Completed multi-step workarounds
+- User prescriptive statements ("always X", "never Y")
+- User explicitly requesting something be remembered
+
+Memories go to the memory store via `/new-memory`. Rules go to `AGENTS.md` or `.agents/conventions.md` via `/learn`. Both are git-tracked — review changes before committing.
+
+Memory CRUD skills: `/new-memory` (auto-write), `/recall` (search), `/forget` (remove), `/memories` (browse)
+Rule skills: `/learn` (auto-write)
+Session search: `/recall-session` (search past OpenCode sessions)
+
+Skills that proactively load the index: `/plan`, `/refine`, `/implement`
 
 ## Project State
 

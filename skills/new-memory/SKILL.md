@@ -22,7 +22,6 @@ Two destinations:
 
 ## Gotchas
 
-- Never write a memory without explicit user confirmation — Step 7 is the mandatory gate.
 - If a very similar memory already exists, prefer updating it over creating a duplicate.
   Duplicate memories with inconsistent content are worse than no memory at all.
 - One-line hooks in MEMORY.md must keep the full line ≤120 chars (including the prefix
@@ -30,6 +29,8 @@ Two destinations:
   in the file body.
 - Slugs must be filesystem-safe: lowercase, underscores only (no spaces, no special chars).
   Pattern: `<type>_<descriptive_name>` e.g. `feedback_response_style`, `project_goals`.
+- Memory capacity is soft-budgeted at 30 entries or 6KB total per MEMORY.md index.
+  When exceeded, prioritize consolidation (merge related entries) over creating new ones.
 
 ---
 
@@ -96,12 +97,28 @@ TARGET=~/.agents/memory   # or ./.agents/memory depending on Step 4
 ls "$TARGET/<slug>.md" 2>/dev/null
 ```
 
-If a file exists with the same or a very similar slug, proceed to Step 6 with the
-update-or-create question. Otherwise proceed normally.
+If a file exists with the same or a very similar slug, auto-merge by proceeding
+to Step 6 which will handle the update.
 
 ---
 
-## Step 6: Check for Duplicates
+## Step 5.5: Check Capacity
+
+Load the target MEMORY.md index and count entries and size:
+
+```bash
+ENTRIES=$(grep -c '^- \[' "$TARGET/MEMORY.md" 2>/dev/null || echo 0)
+SIZE=$(wc -c < "$TARGET/MEMORY.md" 2>/dev/null || echo 0)
+echo "Memory: ${ENTRIES}/30 entries · $((SIZE/1024)).$(((SIZE%1024)*10/1024))KB/6KB"
+```
+
+If ≥30 entries or ≥6KB, still proceed but prioritize consolidation:
+- If adding would duplicate an existing entry, update it rather than creating new
+- If creating new, merge related existing entries first
+
+---
+
+## Step 6: Check for Duplicates (Auto-Merge)
 
 Load the relevant MEMORY.md index if it exists:
 
@@ -109,41 +126,18 @@ Load the relevant MEMORY.md index if it exists:
 cat "$TARGET/MEMORY.md" 2>/dev/null
 ```
 
-Scan index entries for overlapping names, tags, or hooks. If a near-duplicate is found:
+Scan index entries for overlapping names, tags, or hooks. If a near-duplicate is found,
+**auto-update** the existing entry instead of creating a new one:
+- Overwrite the existing file (keep the same slug)
+- Update the `updated:` date in the frontmatter
+- Update the hook in the index if it changed
+- Skip steps 7-8 (no new file to write)
 
-> "A similar memory already exists: `[name]` — [hook]
-> Options: (1) update the existing entry, (2) add this as a separate memory, (3) cancel."
-
-Wait for the user's choice before continuing. If updating, overwrite the existing file
-(keep the same slug) and update the `updated:` date in the frontmatter and the hook in
-the index.
-
----
-
-## Step 7: Confirm Before Writing
-
-Show the full memory that will be written:
-
-```
-Memory to save:
-  File:   <TARGET>/<slug>.md
-  Type:   <type>
-  Tags:   #tag1 #tag2
-  Hook:   <one-line hook>
-
-  Content:
-  ───────────────────────────────────
-  <full memory body>
-  ───────────────────────────────────
-
-Proceed? (yes / edit / cancel)
-```
-
-Do not write anything until the user confirms with "yes", "y", "proceed", or similar.
+If no near-duplicate exists, proceed to Step 7.
 
 ---
 
-## Step 8: Write the Memory File
+## Step 7: Write the Memory File
 
 Create the target directory if needed:
 
@@ -169,7 +163,7 @@ updated: <YYYY-MM-DD>
 
 ---
 
-## Step 9: Update the Index
+## Step 8: Update the Index
 
 Check whether `$TARGET/MEMORY.md` exists:
 
@@ -198,7 +192,7 @@ Index line format (must be a single line ≤120 chars total):
 
 ---
 
-## Step 10: Confirm
+## Step 9: Confirm
 
 Show what was saved:
 

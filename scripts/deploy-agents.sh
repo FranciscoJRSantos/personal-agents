@@ -27,6 +27,6 @@ fi
 
 # ── Deploy staging → target ─────────────────────────────────────────
 mkdir -p "$TARGET_DIR"
-rsync -av --delete "$STAGING_DIR"/ "$TARGET_DIR"/
+rsync -av --delete --exclude=memory/ "$STAGING_DIR"/ "$TARGET_DIR"/
 
 echo "Deployed agents to $TARGET_DIR"

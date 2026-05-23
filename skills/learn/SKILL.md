@@ -21,6 +21,19 @@ Two destinations:
 
 ---
 
+## Proactive Triggers
+
+In addition to explicit `/learn` invocations, auto-write a rule when you detect these patterns:
+- User corrects the agent's approach ("no", "wrong", "actually", "that's not right", "don't do that", "I meant", "stop")
+- User uses prescriptive language ("always X", "never Y", "make sure to", "we should")
+- User expresses frustration about a repeated mistake or pattern
+- User provides a corrected command, syntax, or workflow after the agent made an error
+
+When one of these triggers fires, write the rule immediately — do not ask for confirmation.
+The user can always revert via git (both AGENTS.md and .agents/conventions.md are tracked).
+
+---
+
 ## Gotchas
 
 - If the user invokes `/learn <rule text>`, skip Step 1 and use that text directly.
@@ -44,7 +57,8 @@ Otherwise ask:
 
 ## Step 2: Get the "Why"
 
-If the text does not include a causal phrase ("because", "so that", "since", or similar):
+If the text does not include a causal phrase ("because", "so that", "since", or similar),
+ask for the reason:
 
 > "Why should this rule exist? This becomes the BECAUSE clause — the reason is what makes
 > the rule durable and applicable to new situations."
@@ -53,13 +67,9 @@ Format the final rule:
 - `Always [action] BECAUSE [reason]`
 - `Never [action] BECAUSE [reason]`
 
-Show the formatted rule and confirm before writing:
-
-> "Formatted rule: `[rule]` — does this look right, or should I adjust the wording?"
-
 ---
 
-## Step 3: Check for Duplicates
+## Step 3: Check for Duplicates (Auto-Merge)
 
 Extract the 2–3 most distinctive terms from the rule and search both target files:
 
@@ -67,12 +77,10 @@ Extract the 2–3 most distinctive terms from the rule and search both target fi
 grep -i "[key term 1]" AGENTS.md .agents/conventions.md 2>/dev/null
 ```
 
-If a similar rule is found, show it:
+If a similar rule is found, **auto-merge**: replace the existing rule with the new one.
+The new text takes precedence — it reflects the latest correction.
 
-> "A similar rule already exists: `[existing rule]`
-> Options: (1) add this as a separate rule, (2) replace the existing one, (3) cancel."
-
-If no similar rule, proceed.
+If no similar rule, proceed to Step 4.
 
 ---
 

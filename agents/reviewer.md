@@ -9,7 +9,9 @@ description: >
 model: github-copilot/claude-sonnet-4.6
 mode: all
 permission:
-  edit: deny
+  edit:
+    "*": deny
+    ".agents/**": allow
   bash: allow
   webfetch: deny
   task: deny

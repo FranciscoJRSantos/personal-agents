@@ -72,9 +72,20 @@ Present the content with scope labels:
 ## Project  (./.agents/memory/)
 <content of project MEMORY.md, or "(empty)">
 
-───────────────────────────────────────────────
-Total: <N> memories
+ ───────────────────────────────────────────────
+Total: <N>/30 entries · <X.X>KB/6KB
 Use /recall <query> to load content · /new-memory to save · /forget <name> to remove
 ```
 
-Count total entries across both visible indices for the footer line.
+Compute the entry count and total size for the footer:
+
+```bash
+# Count entries across visible indices
+GLOBAL_ENTRIES=$(grep -c '^- \[' "$GLOBAL_MEM" 2>/dev/null || echo 0)
+PROJECT_ENTRIES=$(grep -c '^- \[' "$PROJECT_MEM" 2>/dev/null || echo 0)
+TOTAL_ENTRIES=$((GLOBAL_ENTRIES + PROJECT_ENTRIES))
+
+# Total size in KB
+TOTAL_SIZE=$(cat "$GLOBAL_MEM" "$PROJECT_MEM" 2>/dev/null | wc -c)
+echo "Total: ${TOTAL_ENTRIES}/30 entries · $((TOTAL_SIZE/1024)).$(((TOTAL_SIZE%1024)*10/1024))KB/6KB"
+```

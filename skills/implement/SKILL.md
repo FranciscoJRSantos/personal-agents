@@ -191,15 +191,27 @@ to write the first test in Step 5.
 
 ### Pull Conventions
 
-Load project-specific conventions that apply to this slice:
+Load project-specific conventions and memory that apply to this slice:
 
 ```bash
 echo "=== Project conventions ==="
 cat AGENTS.md 2>/dev/null | head -50
 cat .agents/conventions.md 2>/dev/null
+
+echo "=== Memory ==="
+cat ~/.agents/memory/MEMORY.md 2>/dev/null
+cat ./agents/memory/MEMORY.md 2>/dev/null
+
+# Deep-load matching full entries
+for slug in $(grep -oE '\[[^]]+\]' ./agents/memory/MEMORY.md 2>/dev/null | sed 's/^\[//;s/\]$//'); do
+  [ -f "./agents/memory/$slug.md" ] && cat "./agents/memory/$slug.md"
+done
+for slug in $(grep -oE '\[[^]]+\]' ~/.agents/memory/MEMORY.md 2>/dev/null | sed 's/^\[//;s/\]$//'); do
+  [ -f "$HOME/.agents/memory/$slug.md" ] && cat "$HOME/.agents/memory/$slug.md"
+done
 ```
 
-Extract only the rules relevant to the current slice's language and module type.
+Extract only the rules and memories relevant to the current slice's language and module type.
 
 ---
 
@@ -486,7 +498,7 @@ pull_conventions() {
   echo "=== Memory ==="
   cat ./agents/memory/MEMORY.md 2>/dev/null || true
   # Load matching full entries
-  for slug in $(grep -oP '(?<=\[)[^\]]+(?=\])' ./agents/memory/MEMORY.md 2>/dev/null); do
+  for slug in $(grep -oE '\[[^]]+\]' ./agents/memory/MEMORY.md 2>/dev/null | sed 's/^\[//;s/\]$//'); do
     [ -f "./agents/memory/$slug.md" ] && cat "./agents/memory/$slug.md"
   done
 }

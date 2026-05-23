@@ -11,7 +11,7 @@ mode: subagent
 permission:
   edit:
     "*": deny
-    ".agents/codemap/*": allow
+    ".agents/**": allow
   bash: allow
   webfetch: deny
   task: deny

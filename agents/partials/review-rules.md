@@ -56,6 +56,42 @@ Activate when the diff touches: conditional branches, state machines, numeric ca
 4. **Mutable default argument** — `def f(x=[])` or `def f(x={})` → Warning (escalate to Critical if called from multiple threads)
 5. **Optimistic delete without existence check** — `DELETE FROM ... WHERE id = ?` without checking rows affected, then returns success → Warning
 
+### ML specialist frame
+
+Activate when the diff touches: model training, evaluation metrics, feature engineering, data splitting, cross-validation, hyperparameter search, inference serving, ONNX export, or model serialization files.
+
+**Vocabulary:** data leakage, train-test contamination, label leakage, target leakage, distribution shift, concept drift, overfitting, underfitting, calibration, reproducibility, random seed, model versioning, feature store, feature drift, AUC-ROC, AUC-PR, log loss, Brier score, ECE, confusion matrix, class imbalance, stratified split, holdout set, cross-validation fold, hyperparameter, grid search, Bayesian optimization, early stopping, checkpoint, ONNX, model registry, A/B test, shadow deployment.
+
+**Named anti-patterns to detect (flag as Critical unless noted):**
+1. **Train-test leakage** — target column or derived feature present in training data before split → Critical
+2. **Non-reproducible experiment** — no random seed set, or seed set after data shuffle → Warning
+3. **Unstratified split on imbalanced data** — `train_test_split` without `stratify=y` on >10:1 class ratio → Critical
+4. **Hardcoded data path** — `/home/user/data/model.pkl` or `s3://prod-bucket/v2/` as string literal instead of config/env → Warning
+5. **Missing model versioning** — model saved without version hash, git SHA, or registry entry → Warning
+6. **Metric computed on wrong set** — accuracy or AUC reported on training set as final metric → Critical
+7. **ONNX export skipped** — inference path depends on torch/tensorflow runtime without ONNX alternative → Suggestion
+8. **Feature drift guard missing** — production prediction pipeline has no input distribution check or alert → Warning
+9. **Class weight without class count** — `class_weight='balanced'` used without logging class distribution → Suggestion
+10. **Deprecated metric for imbalanced data** — accuracy used as primary metric on >5:1 imbalance → Warning (should use AUC-PR or F1)
+
+### Data engineering specialist frame
+
+Activate when the diff touches: ETL pipelines, data validation, schema definitions, data migration, orchestration (Airflow, Prefect, Dagster), idempotent operations, partition handling, or data quality checks.
+
+**Vocabulary:** idempotency, exactly-once, at-least-once, backfill, incremental load, full refresh, partition, schema evolution, schema registry, data contract, data quality gate, null fraction, cardinality, referential integrity, CDC, merge, upsert, deduplication, idempotency key, orchestration, DAG, task dependency, SLA, data freshness, staleness, drift, contract test.
+
+**Named anti-patterns to detect (flag as Critical unless noted):**
+1. **Non-idempotent write** — `INSERT` without dedup key or `ON CONFLICT` clause in pipeline that can be retried → Critical
+2. **Schema-breaking change without migration** — column dropped or type changed without ALTER TABLE migration step → Critical
+3. **Full refresh instead of incremental** — `DELETE FROM table; INSERT INTO table SELECT ...` on a table with SLA-bound downstream consumers → Warning
+4. **Missing data quality gate** — pipeline writes to production table without null checks, cardinality checks, or row count assertions → Warning
+5. **Hardcoded date range** — `WHERE date BETWEEN '2024-01-01' AND '2024-12-31'` in pipeline code → Warning
+6. **Unpartitioned large table scan** — `SELECT * FROM large_table` without date/partition filter in pipeline → Warning
+7. **Implicit schema coupling** — pipeline reads `SELECT *` from upstream table instead of naming columns → Warning
+8. **Retry without idempotency key** — `retries: 3` on a task that writes to a mutable table without a deduplication key → Critical
+9. **Missing freshness SLA check** — pipeline produces output without asserting `max_age < threshold` before publishing → Suggestion
+10. **Backfill without partition isolation** — backfill script processes all partitions in a single transaction → Warning
+
 ## Output Format
 
 Structure output as:
