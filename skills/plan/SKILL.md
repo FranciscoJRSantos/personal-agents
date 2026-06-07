@@ -28,16 +28,16 @@ explicitly approves.
 
 ## Step 1: Fetch the Ticket
 
-First check for a local artifact from `/refine`:
+Check for a local decision artifact from `/grill-me`:
 
 ```bash
 TICKET=<PROJ-123>
-cat .agents/artifacts/${TICKET}-ticket.md 2>/dev/null
+ls .agents/artifacts/grill-*-decisions.md 2>/dev/null
 ```
 
-If found and complete, use it directly — no need to fetch from Jira.
+If found, read it to incorporate resolved decisions into the plan.
 
-If not found, fetch from Jira:
+Fetch the ticket from Jira:
 
 ```bash
 acli jira get PROJ-123
@@ -55,26 +55,6 @@ Extract:
 - Issue type
 - Acceptance criteria (explicit or implied)
 - Any linked tickets or context
-
-Also load relevant memory context to inform the plan:
-
-```bash
-GLOBAL_MEM=~/.agents/memory/MEMORY.md
-PROJECT_MEM=./agents/memory/MEMORY.md
-
-[ -f "$GLOBAL_MEM" ] && cat "$GLOBAL_MEM"
-[ -f "$PROJECT_MEM" ] && cat "$PROJECT_MEM"
-```
-
-Scan index entries relevant to this ticket (related project goals, past decisions, known
-constraints). For each relevant entry, load its full file:
-
-```bash
-cat ~/.agents/memory/<matched-slug>.md
-cat ./agents/memory/<matched-slug>.md
-```
-
-If no memory files exist, skip silently. Use recalled context in Step 3 when writing the plan.
 
 ---
 

@@ -25,11 +25,9 @@ Skills communicate via `.agents/artifacts/` files — each reads the previous st
 
 | Artifact                            | Written by    | Read by                                                |
 |-------------------------------------|---------------|--------------------------------------------------------|
-| `grill-<slug>-decisions.md`         | `/grill-me`   | `/refine`, `/plan`                                     |
-| `<TICKET>-ticket.md`                | `/refine`     | `/plan`                                                |
-| `<TICKET>-plan.md`                  | `/plan`       | `/review`, `/ship`, `/experiment`                      |
+| `grill-<slug>-decisions.md`         | `/grill-me`   | `/plan`                                                |
+| `<TICKET>-plan.md`                  | `/plan`       | `/review`, `/ship`                                     |
 | `<TICKET>-kanban-board.md`          | `/plan`       | `/implement`                                           |
-| `<TICKET>-experiment-<RUN>.md`      | `/experiment` | `/report`, `experiment-analyzer`                       |
 | `<TICKET>-review-impl.md`           | `/review`     | `/ship`                                                |
 | `<TICKET>-impl-progress.md`         | `/implement`  | `/implement` (resume)                                  |
 
@@ -112,35 +110,6 @@ These apply globally across all skills and agents.
 
 SpotMe is a plugin that intercepts code writes and scaffolds exercises for the human. When active, `/implement` switches to gym mode during green phases. See `.agents/conventions.md` for toggle rules. SpotMe does not interfere with artifact writes or tool calls to non-code files.
 
-## Memory Store
-
-Skills and agents save and retrieve persistent memories that survive across sessions.
-
-Two storage locations:
-- `~/.agents/memory/` — global memories (user preferences, cross-project feedback)
-- `./agents/memory/` — project-scoped memories (project goals, decisions, context)
-
-Each location has a compact `MEMORY.md` index (~50-150 tokens) that skills load to assess relevance, followed by full `.md` files loaded on-demand for matching entries. Index format: `- [Name](slug.md) \`#tags\` — one-line hook`
-
-Memory capacity budget: 30 entries or 6KB total per MEMORY.md index (soft limit — warns when exceeded).
-
-### Auto-Write Behavior
-
-Memories and rules are written automatically without confirmation, triggered by:
-- User corrections to agent's approach ("no", "wrong", "actually", "don't do that")
-- Environment discoveries (OS, tool versions, paths, quirks)
-- Completed multi-step workarounds
-- User prescriptive statements ("always X", "never Y")
-- User explicitly requesting something be remembered
-
-Memories go to the memory store via `/new-memory`. Rules go to `AGENTS.md` or `.agents/conventions.md` via `/learn`. Both are git-tracked — review changes before committing.
-
-Memory CRUD skills: `/new-memory` (auto-write), `/recall` (search), `/forget` (remove), `/memories` (browse)
-Rule skills: `/learn` (auto-write)
-Session search: `/recall-session` (search past OpenCode sessions)
-
-Skills that proactively load the index: `/plan`, `/refine`, `/implement`
-
 ## Project State
 
 A lightweight state file at `.agents/STATE.md` persists cross-session context:
@@ -169,7 +138,7 @@ Skills should update STATE.md when making decisions or hitting blockers. Keep it
 ## Typical Workflow
 
 ```
-/refine → /plan → /implement → /check → /review → /ship
+/grill-me → /plan → /implement → /review → /ship
 ```
 
 For unfamiliar codebases, start with `/codemap` to understand the structure first.
@@ -182,7 +151,7 @@ Each slice follows a TDD cycle with clear-and-resume between slices:
 2. **Explore** — read the relevant module files directly to understand current state before writing tests
 3. **Red** — write a failing test for the slice's acceptance criterion
 4. **Green** — implement the minimum code to pass the test (across all layers)
-5. **Refactor** — clean up, check conventions pulled from memory/AGENTS.md
+5. **Refactor** — clean up, check conventions pulled from AGENTS.md
 6. **Verify** — run checks (lint, types, tests)
 7. **Gate** — present slice for approval, then `/clear` before next slice
 
@@ -195,4 +164,3 @@ The `reviewer` agent (Tab-switchable primary agent, also delegatable as subagent
 | Agent | Invocation | Purpose |
 |-------|-----------|---------|
 | `@observer` | `@observer <question>` or `@observer update` | Maintain and explain codebase via codemaps |
-| `@experiment-analyzer` | Before `/report` | Validate ML metrics against plan thresholds |

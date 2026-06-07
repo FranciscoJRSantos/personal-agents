@@ -26,8 +26,8 @@ TDD is built into the loop (Red → Green → Refactor). Context is cleared betw
 - When exploring the module before the Red phase, read the relevant files directly. One focused exploration pass per slice.
 - After each slice completes, run `/clear` before starting the next slice. This keeps the
   main context in the "smart zone" and avoids context bloat.
-- Pull coding conventions from project AGENTS.md and project memory at the start of each
-  slice (Step 4). Do NOT load them in Step 1 — only the slice's own conventions are needed.
+- Pull coding conventions from project AGENTS.md at the start of each slice (Step 4).
+  Do NOT load them in Step 1 — only the slice's own conventions are needed.
 - If a slice is tagged `afk`, stop at the gate and wait for user input before proceeding.
 - If the last slice completes, mark the artifact as complete and recommend `/review`.
 
@@ -191,27 +191,15 @@ to write the first test in Step 5.
 
 ### Pull Conventions
 
-Load project-specific conventions and memory that apply to this slice:
+Load project-specific conventions that apply to this slice:
 
 ```bash
 echo "=== Project conventions ==="
 cat AGENTS.md 2>/dev/null | head -50
 cat .agents/conventions.md 2>/dev/null
-
-echo "=== Memory ==="
-cat ~/.agents/memory/MEMORY.md 2>/dev/null
-cat ./agents/memory/MEMORY.md 2>/dev/null
-
-# Deep-load matching full entries
-for slug in $(grep -oE '\[[^]]+\]' ./agents/memory/MEMORY.md 2>/dev/null | sed 's/^\[//;s/\]$//'); do
-  [ -f "./agents/memory/$slug.md" ] && cat "./agents/memory/$slug.md"
-done
-for slug in $(grep -oE '\[[^]]+\]' ~/.agents/memory/MEMORY.md 2>/dev/null | sed 's/^\[//;s/\]$//'); do
-  [ -f "$HOME/.agents/memory/$slug.md" ] && cat "$HOME/.agents/memory/$slug.md"
-done
 ```
 
-Extract only the rules and memories relevant to the current slice's language and module type.
+Extract only the rules relevant to the current slice's language and module type.
 
 ---
 
@@ -495,12 +483,6 @@ pull_conventions() {
   grep -A5 "$lang" AGENTS.md 2>/dev/null || true
   echo "=== Conventions ==="
   cat .agents/conventions.md 2>/dev/null || echo "(no project conventions)"
-  echo "=== Memory ==="
-  cat ./agents/memory/MEMORY.md 2>/dev/null || true
-  # Load matching full entries
-  for slug in $(grep -oE '\[[^]]+\]' ./agents/memory/MEMORY.md 2>/dev/null | sed 's/^\[//;s/\]$//'); do
-    [ -f "./agents/memory/$slug.md" ] && cat "./agents/memory/$slug.md"
-  done
 }
 ```
 

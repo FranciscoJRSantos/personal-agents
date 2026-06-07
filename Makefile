@@ -7,10 +7,12 @@ AGENTS_DIR         ?= $(HOME)/.agents
 OPENCODE_SKILLS_DIR ?= $(HOME)/.config/opencode/skills
 OPENCODE_AGENTS_DIR  ?= $(HOME)/.config/opencode/agents
 
-.PHONY: deploy deploy-opencode deploy-agents pull pull-skills pull-agents setup setup-opencode list-skills lint-skills list-agents lint-agents lint-docs
+CLAUDE_SKILLS_DIR  ?= $(HOME)/.claude/skills
 
-## Deploy everything to OpenCode
-deploy: deploy-opencode deploy-agents
+.PHONY: deploy deploy-opencode deploy-claude deploy-agents pull pull-skills pull-agents pull-claude setup setup-opencode setup-claude list-skills lint-skills list-agents lint-agents lint-docs
+
+## Deploy everything to OpenCode and Claude Code
+deploy: deploy-opencode deploy-claude deploy-agents
 
 ## Skills → ~/.config/opencode/skills/ + Agents → ~/.config/opencode/agents/
 deploy-opencode: setup-opencode
@@ -20,14 +22,20 @@ deploy-opencode: setup-opencode
 	@echo "Deploying agents to $(OPENCODE_AGENTS_DIR)..."
 	@scripts/deploy-agents.sh "$(AGENTS_SRC)" "$(OPENCODE_AGENTS_DIR)" --md-only
 
+## Skills → ~/.claude/skills/ (Claude Code)
+## No --delete: preserves Claude Code built-in skills not tracked in this repo
+deploy-claude: setup-claude
+	@echo "Deploying skills to $(CLAUDE_SKILLS_DIR)..."
+	rsync -av $(GLOBAL_SKILLS)/ $(CLAUDE_SKILLS_DIR)/
+
 ## Agents → ~/.agents/ (canonical, includes partials and memory)
 deploy-agents:
 	@scripts/deploy-agents.sh "$(AGENTS_SRC)" "$(AGENTS_DIR)"
 
 ## Pull changes back from deployed locations
-pull: pull-skills pull-agents
+pull: pull-skills pull-agents pull-claude
 
-## ~/.config/opencode/skills/ → skills/global/
+## ~/.config/opencode/skills/ → skills/
 pull-skills:
 	rsync -av $(OPENCODE_SKILLS_DIR)/ $(GLOBAL_SKILLS)/
 
@@ -35,12 +43,19 @@ pull-skills:
 pull-agents:
 	rsync -av $(AGENTS_DIR)/ $(AGENTS_SRC)/
 
-## One-time setup: create ~/.agents/ and ~/.config/opencode/ directories
+## ~/.claude/skills/ → skills/ (Claude Code edits back to source)
+pull-claude:
+	rsync -av --exclude='branch' --exclude='gitlab' --exclude='hotfix' \
+	          --exclude='standup' --exclude='status' --exclude='test' --exclude='tidy' \
+	          $(CLAUDE_SKILLS_DIR)/ $(GLOBAL_SKILLS)/
+
+## One-time setup: create ~/.agents/, ~/.config/opencode/, and ~/.claude/skills/
 setup:
 	@echo "=== Setting up canonical agents directory ==="
 	mkdir -p $(AGENTS_DIR)
 	@echo "Created $(AGENTS_DIR)"
 	@$(MAKE) setup-opencode
+	@$(MAKE) setup-claude
 	@echo "=== Done. Run 'make deploy' to populate. ==="
 
 ## One-time setup: create ~/.config/opencode/agents/ and ~/.config/opencode/skills/
@@ -49,6 +64,11 @@ setup-opencode:
 	mkdir -p $(OPENCODE_SKILLS_DIR)
 	@echo "Created $(OPENCODE_AGENTS_DIR)"
 	@echo "Created $(OPENCODE_SKILLS_DIR)"
+
+## One-time setup: create ~/.claude/skills/
+setup-claude:
+	mkdir -p $(CLAUDE_SKILLS_DIR)
+	@echo "Created $(CLAUDE_SKILLS_DIR)"
 
 ## List all skills
 list-skills:

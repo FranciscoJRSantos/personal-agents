@@ -3,7 +3,7 @@ name: grill-me
 description: >
   Interview the user relentlessly about a plan or design until reaching shared
   understanding, resolving each branch of the decision tree. Produces a decision
-  log artifact consumable by /refine and /plan. Invoke with "/grill-me [topic]".
+  log artifact consumable by /plan. Invoke with "/grill-me [topic]".
 ---
 
 # Grill-Me Skill
@@ -14,7 +14,7 @@ one. Always explores the codebase before asking a question if the answer is
 knowable from code.
 
 Produces a decision log artifact (`.agents/artifacts/grill-<slug>-decisions.md`)
-that `/refine` and `/plan` can consume downstream.
+that `/plan` can consume downstream.
 
 ---
 
@@ -170,8 +170,8 @@ created: <ISO 8601 timestamp>
 
 Based on the resolved decisions, suggest one or more of:
 
-- `/refine` — to turn these decisions into a Jira ticket
 - `/plan` — to create an implementation plan from resolved decisions
+- Post to Jira via MCP — to turn these decisions into a ticket
 - `/adr` — to capture a significant architectural decision from this session
 ```
 
@@ -191,4 +191,4 @@ End with a concise summary confirming the artifact was saved.
 - **Follow dependencies** — if a decision blocks others, flag it. If an
   unresolved question blocks downstream decisions, note that explicitly.
 - **No Jira writes** — grill-me produces a decision artifact, not a ticket.
-  Hand off to `/refine` for Jira writes.
+  Post to Jira via MCP after the session.
