@@ -106,6 +106,8 @@ These apply globally across all skills and agents.
 
 **Deviation Rules:** During execution, auto-fix bugs and missing critical functionality (error handling, validation, auth) without asking. Only stop for architectural decisions (new tables, framework changes, breaking API changes).
 
+**Deferral Convention:** Mark deliberate shortcuts with `deferred:` comments in code — format: `# deferred: <ceiling>, <upgrade path>`. Example: `# deferred: global lock, per-account locks if throughput matters`. Run `/debt-ledger` to harvest all deferrals into a tracked ledger.
+
 ## SpotMe Integration
 
 SpotMe is a plugin that intercepts code writes and scaffolds exercises for the human. When active, `/implement` switches to gym mode during green phases. See `.agents/conventions.md` for toggle rules. SpotMe does not interfere with artifact writes or tool calls to non-code files.

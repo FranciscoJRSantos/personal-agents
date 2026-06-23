@@ -30,6 +30,9 @@ TDD is built into the loop (Red → Green → Refactor). Context is cleared betw
   Do NOT load them in Step 1 — only the slice's own conventions are needed.
 - If a slice is tagged `afk`, stop at the gate and wait for user input before proceeding.
 - If the last slice completes, mark the artifact as complete and recommend `/review`.
+- Bug fix = root cause, not symptom. Before editing, grep every caller of the function you
+  touch. Fix the shared function once — one guard there is a smaller diff than one per caller,
+  and patching only the path the ticket names leaves a sibling caller still broken.
 
 ---
 

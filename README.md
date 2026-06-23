@@ -46,6 +46,8 @@ make deploy   # sync skills and agents to OpenCode and Claude Code
 | `/plan`              | `/plan TICKET`                            | Generate type-aware implementation plan → Jira comment                  |
 | `/implement`         | `/implement`                              | Staged implementation with hard gates between vertical slices           |
 | `/review`            | `/review`                                 | Severity-grouped code review vs main                                    |
+| `/yagni-review`      | `/yagni-review`                           | Over-engineering-only review: find what to delete, one line per finding |
+| `/debt-ledger`       | `/debt-ledger`                            | Harvest `deferred:` comments into a tracked debt ledger                 |
 | `/ship`              | `/ship`                                   | Run checks → gate on review → commit → push → MR                       |
 | `/codemap`           | `/codemap`                                | Generate hierarchical architectural codemap of the codebase             |
 | `/learn`             | `/learn [rule]`                           | Capture a session correction into AGENTS.md or .agents/conventions.md   |
