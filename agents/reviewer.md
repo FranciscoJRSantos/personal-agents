@@ -1,4 +1,5 @@
 ---
+name: reviewer
 description: >
   Code reviewer for own branches and incoming MRs. Use for "review my code",
   "check my changes", "deep review", "review !123", "look at this MR", or any

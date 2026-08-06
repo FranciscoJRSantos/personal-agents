@@ -1,4 +1,5 @@
 ---
+name: observer
 description: >
   Maintains and explains the codebase through structured codemaps. In explain
   mode, loads the codemap atlas as context and drills into specific files to

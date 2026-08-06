@@ -23,10 +23,10 @@ deploy-opencode: setup-opencode
 	@scripts/deploy-agents.sh "$(AGENTS_SRC)" "$(OPENCODE_AGENTS_DIR)" --md-only
 
 ## Skills → ~/.claude/skills/ (Claude Code)
-## No --delete: preserves Claude Code built-in skills not tracked in this repo
+## --delete: mirrors the repo exactly so both harnesses expose identical skills
 deploy-claude: setup-claude
 	@echo "Deploying skills to $(CLAUDE_SKILLS_DIR)..."
-	rsync -av $(GLOBAL_SKILLS)/ $(CLAUDE_SKILLS_DIR)/
+	rsync -av --delete $(GLOBAL_SKILLS)/ $(CLAUDE_SKILLS_DIR)/
 
 ## Agents → ~/.agents/ (canonical, includes partials and memory)
 deploy-agents:

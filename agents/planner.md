@@ -1,4 +1,5 @@
 ---
+name: planner
 description: >
   Mechanical pre-processing for implementation planning — fetches Jira tickets,
   detects ticket type, loads memory and artifact context, designs module interfaces,

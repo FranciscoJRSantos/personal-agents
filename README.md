@@ -34,7 +34,7 @@ make setup    # one-time: create ~/.agents/ and ~/.config/opencode/ directories
 make deploy   # sync skills and agents to OpenCode and Claude Code
 ```
 
-`make deploy` rsyncs `skills/` to `~/.config/opencode/skills/` and `~/.claude/skills/`, and agents to `~/.config/opencode/agents/` (plus `~/.agents/` for canonical partials).
+`make deploy` rsyncs `skills/` to `~/.config/opencode/skills/` and `~/.claude/skills/`, and agents to `~/.config/opencode/agents/` (plus `~/.agents/` for canonical partials). Both harnesses expose the identical skill set; Claude Code reads the agents via `~/.claude/agents` → `~/.agents`.
 
 ---
 
@@ -54,6 +54,7 @@ make deploy   # sync skills and agents to OpenCode and Claude Code
 | `/adr`               | `/adr [decision]`                         | Record architecture decisions with context, rationale, and alternatives |
 | `/create-skill`      | `/create-skill [skill\|agent] [name]`     | Guide creation of new skills and agents using research-backed checklist |
 | `/update-skill`      | `/update-skill`                           | Enforce skill/agent edits in source repo, not deployed locations        |
+| `/handoff`           | `/handoff [focus]`                        | Compact the session into a handoff doc + sync STATE.md for the next agent |
 
 ---
 
@@ -152,7 +153,7 @@ Skills call these CLI tools when available. Install them separately.
 | `make setup`           | One-time: create `~/.agents/` and `~/.config/opencode/` directories                  |
 | `make deploy`          | Sync skills + agents to OpenCode and Claude Code                                     |
 | `make deploy-opencode` | Sync skills to `~/.config/opencode/skills/` + agents to `~/.config/opencode/agents/` |
-| `make deploy-claude`   | Sync skills to `~/.claude/skills/`                                                   |
+| `make deploy-claude`   | Sync skills to `~/.claude/skills/` (mirrors the repo with `--delete`; agents come via the `~/.agents` symlink) |
 | `make deploy-agents`   | Sync agents to `~/.agents/` (includes partials)                                      |
 | `make pull`            | Pull changes from deployed locations back into the repo                              |
 | `make lint-skills`     | Validate SKILL.md frontmatter                                                        |
