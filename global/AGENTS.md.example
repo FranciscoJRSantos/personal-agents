@@ -1,0 +1,44 @@
+# Global Rules
+
+<!--
+  Template for your personal OpenCode/Claude global rules.
+
+  Copy this file to `global/AGENTS.md` and fill in your details.
+  `global/AGENTS.md` is gitignored so your real identity and preferences stay
+  off the public repo. `make deploy-global` installs it to
+  ~/.config/opencode/AGENTS.md (which ~/.claude/CLAUDE.md symlinks to).
+-->
+
+## Identity
+<Your role> at <your company>, based in <city, country>.
+
+<One or two sentences on how you approach engineering: priorities, seniority, and working style.>
+
+## Stack
+- **Backend**: <languages and frameworks>
+- **ML/Data**: <libraries and platforms>
+- **Editor**: <editor and tooling>
+- **Other tools**: <misc tools and libraries>
+
+## Style & Philosophy
+- <principle>
+- <principle>
+- <principle>
+
+## Preferences
+- <work arrangement preferences>
+- <role and location preferences>
+- <current focus areas>
+
+## Self-correction
+- If a codemap, artifact, or convention you rely on is stale, update it before finishing the task.
+- When the user corrects you, append the rule to `.agents/conventions.md` (create it if absent) in this format: Always/Never [action] BECAUSE [reason]. Future sessions inherit it.
+- Never delete or weaken tests to make them pass. If a test looks wrong, stop and ask.
+- Run the project's checks (lint, types, tests) before claiming a task done — never assume they pass.
+
+## Model routing
+- <cost/quota policy for choosing models>
+- `/<skill>` → <model>; escalate to <model> only for <condition>.
+- `/<skill>` → <model> for <case>, <model> for <case>.
+- `/<skill>` → <model> — never the same model family that implemented the code.
+- If the session's current model doesn't fit the skill about to run, suggest a switch before starting instead of silently proceeding.

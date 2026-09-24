@@ -9,6 +9,10 @@ OPENCODE_AGENTS_DIR  ?= $(HOME)/.config/opencode/agents
 
 CLAUDE_SKILLS_DIR  ?= $(HOME)/.claude/skills
 
+## Local global rules (gitignored). Template: global/AGENTS.md.example
+GLOBAL_AGENTS_SRC   := global/AGENTS.md
+GLOBAL_AGENTS_DEST  ?= $(HOME)/.config/opencode/AGENTS.md
+
 ## Set DRY_RUN=1 to preview what deploy/pull would change (rsync --dry-run).
 DRY_RUN ?=
 ifeq ($(DRY_RUN),1)
@@ -17,10 +21,10 @@ else
 RSYNC_DRY :=
 endif
 
-.PHONY: deploy deploy-opencode deploy-claude deploy-agents deploy-skills deploy-skills-opencode pull pull-skills pull-agents pull-claude setup setup-opencode setup-claude list-skills lint-skills list-agents lint-agents lint-docs
+.PHONY: deploy deploy-opencode deploy-claude deploy-agents deploy-skills deploy-skills-opencode pull pull-skills pull-agents pull-claude pull-global setup setup-opencode setup-claude list-skills lint-skills list-agents lint-agents lint-docs deploy-global
 
 ## Deploy everything to OpenCode and Claude Code
-deploy: deploy-opencode deploy-claude deploy-agents
+deploy: deploy-opencode deploy-claude deploy-agents deploy-global
 
 ## Skills → ~/.config/opencode/skills/ + Agents → ~/.config/opencode/agents/
 ## Reuses deploy-skills-opencode so skill-only changes can ship without touching agents.
@@ -48,8 +52,19 @@ deploy-claude: setup-claude
 deploy-agents:
 	@DRY_RUN=$(DRY_RUN) scripts/deploy-agents.sh "$(AGENTS_SRC)" "$(AGENTS_DIR)"
 
+## Global rules → ~/.config/opencode/AGENTS.md
+## The source file is gitignored; skips with a warning when it is absent.
+deploy-global:
+	@if [ ! -f "$(GLOBAL_AGENTS_SRC)" ]; then \
+		echo "WARN  $(GLOBAL_AGENTS_SRC) not found — skipping (create it from global/AGENTS.md.example)"; \
+	else \
+		echo "Deploying global rules to $(GLOBAL_AGENTS_DEST)..."; \
+		mkdir -p "$$(dirname "$(GLOBAL_AGENTS_DEST)")"; \
+		rsync -av $(RSYNC_DRY) "$(GLOBAL_AGENTS_SRC)" "$(GLOBAL_AGENTS_DEST)"; \
+	fi
+
 ## Pull changes back from deployed locations
-pull: pull-skills pull-agents pull-claude
+pull: pull-skills pull-agents pull-claude pull-global
 
 ## ~/.config/opencode/skills/ → skills/
 pull-skills:
@@ -64,6 +79,14 @@ pull-claude:
 	rsync -av $(RSYNC_DRY) --exclude='branch' --exclude='gitlab' --exclude='hotfix' \
 	          --exclude='standup' --exclude='status' --exclude='test' --exclude='tidy' \
 	          $(CLAUDE_SKILLS_DIR)/ $(GLOBAL_SKILLS)/
+
+## ~/.config/opencode/AGENTS.md → global/AGENTS.md (gitignored, local only)
+pull-global:
+	@if [ ! -f "$(GLOBAL_AGENTS_DEST)" ]; then \
+		echo "WARN  $(GLOBAL_AGENTS_DEST) not found — nothing to pull"; \
+	else \
+		rsync -av $(RSYNC_DRY) "$(GLOBAL_AGENTS_DEST)" "$(GLOBAL_AGENTS_SRC)"; \
+	fi
 
 ## One-time setup: create ~/.agents/, ~/.config/opencode/, and ~/.claude/skills/
 setup:

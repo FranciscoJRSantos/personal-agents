@@ -12,3 +12,7 @@ wheels/
 .env
 .envrc
 /.agent-shell/
+
+# Real global rules — identity/preferences stay off the public repo.
+# Tracked template: global/AGENTS.md.example
+/global/AGENTS.md
