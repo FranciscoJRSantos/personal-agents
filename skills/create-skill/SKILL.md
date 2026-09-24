@@ -132,15 +132,21 @@ A good <name> should:
 
 ````
 ---
-name: <name>
 description: >
   <what it does — include trigger phrases; must end with "Does not write artifacts.">
+  OpenCode derives the agent name from the filename, so no `name:` field.
 model: sonnet
 mode: subagent
-permission:
-  edit: deny
-  bash: allow
-  webfetch: deny
+permissions:
+  - action: edit
+    resource: "*"
+    effect: deny
+  - action: shell
+    resource: "*"
+    effect: allow
+  - action: webfetch
+    resource: "*"
+    effect: deny
 ---
 
 # <Name>
@@ -230,6 +236,6 @@ A good output from this skill should:
 - Have all critical info (Gotchas, key constraints) placed before Step 1
 - Have ≤ 15 numbered steps (consolidate if more are needed)
 - Pass `make lint-skills` or `make lint-agents` on the first attempt
-- For agents: include `model: sonnet`, `mode: subagent`, and a `permission:` block
+- For agents: include `model: sonnet`, `mode: subagent`, and a `permissions:` list (V2 schema: `action`/`resource`/`effect` rules, broad rules first because the last match wins)
 - For agents with domain scope: include a specialist frame with named anti-patterns
 - For any file-writing step: include a confirmation gate before the write

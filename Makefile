@@ -9,18 +9,26 @@ OPENCODE_AGENTS_DIR  ?= $(HOME)/.config/opencode/agents
 
 CLAUDE_SKILLS_DIR  ?= $(HOME)/.claude/skills
 
-.PHONY: deploy deploy-opencode deploy-claude deploy-agents pull pull-skills pull-agents pull-claude setup setup-opencode setup-claude list-skills lint-skills list-agents lint-agents lint-docs
+.PHONY: deploy deploy-opencode deploy-claude deploy-agents deploy-skills deploy-skills-opencode pull pull-skills pull-agents pull-claude setup setup-opencode setup-claude list-skills lint-skills list-agents lint-agents lint-docs
 
 ## Deploy everything to OpenCode and Claude Code
 deploy: deploy-opencode deploy-claude deploy-agents
 
 ## Skills → ~/.config/opencode/skills/ + Agents → ~/.config/opencode/agents/
-deploy-opencode: setup-opencode
+## Reuses deploy-skills-opencode so skill-only changes can ship without touching agents.
+deploy-opencode: deploy-skills-opencode
+	@echo "Deploying agents to $(OPENCODE_AGENTS_DIR)..."
+	@scripts/deploy-agents.sh "$(AGENTS_SRC)" "$(OPENCODE_AGENTS_DIR)" --md-only
+
+## Skills → OpenCode + Claude Code (agents untouched)
+## Use this to ship skill changes without clobbering live agents with a stale repo.
+deploy-skills: deploy-skills-opencode deploy-claude
+
+## Skills → ~/.config/opencode/skills/ only (agents untouched)
+deploy-skills-opencode: setup-opencode
 	@echo "Deploying skills to $(OPENCODE_SKILLS_DIR)..."
 	mkdir -p $(OPENCODE_SKILLS_DIR)
 	rsync -av --delete $(GLOBAL_SKILLS)/ $(OPENCODE_SKILLS_DIR)/
-	@echo "Deploying agents to $(OPENCODE_AGENTS_DIR)..."
-	@scripts/deploy-agents.sh "$(AGENTS_SRC)" "$(OPENCODE_AGENTS_DIR)" --md-only
 
 ## Skills → ~/.claude/skills/ (Claude Code)
 ## --delete: mirrors the repo exactly so both harnesses expose identical skills
@@ -125,8 +133,15 @@ lint-agents:
 			echo "FAIL  $$agent: frontmatter missing 'description:' field"; \
 			ok=false; \
 		fi; \
-		if ! echo "$$fm" | yq eval -e 'select(di==0) | .permission' >/dev/null 2>&1; then \
-			echo "WARN  $$agent: missing 'permission:' block (needed for opencode)"; \
+		perm_count=$$(echo "$$fm" | yq eval 'select(di==0) | .permissions | length' 2>/dev/null | grep -E '^[0-9]+$$' | grep -v '^0$$' | head -1); \
+		if [ -z "$$perm_count" ]; then \
+			echo "WARN  $$agent: missing 'permissions:' list (needed for opencode v2)"; \
+		else \
+			bad=$$(echo "$$fm" | yq eval 'select(di==0) | [.permissions[] | select((has("action") | not) or (has("resource") | not) or (has("effect") | not))] | length' 2>/dev/null | grep -E '^[1-9][0-9]*$$' | head -1); \
+			if [ -n "$$bad" ]; then \
+				echo "FAIL  $$agent: 'permissions' entry missing action/resource/effect"; \
+				ok=false; \
+			fi; \
 		fi; \
 		if [ -n "$$description" ] && [ "$$description" != '""' ]; then \
 			echo "OK    $$agent"; \

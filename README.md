@@ -153,11 +153,13 @@ Skills call these CLI tools when available. Install them separately.
 | `make setup`           | One-time: create `~/.agents/` and `~/.config/opencode/` directories                  |
 | `make deploy`          | Sync skills + agents to OpenCode and Claude Code                                     |
 | `make deploy-opencode` | Sync skills to `~/.config/opencode/skills/` + agents to `~/.config/opencode/agents/` |
+| `make deploy-skills`   | Sync skills to OpenCode + Claude only — leaves live agents untouched                 |
+| `make deploy-skills-opencode` | Sync skills to `~/.config/opencode/skills/` only — leaves agents untouched    |
 | `make deploy-claude`   | Sync skills to `~/.claude/skills/` (mirrors the repo with `--delete`; agents come via the `~/.agents` symlink) |
 | `make deploy-agents`   | Sync agents to `~/.agents/` (includes partials)                                      |
 | `make pull`            | Pull changes from deployed locations back into the repo                              |
 | `make lint-skills`     | Validate SKILL.md frontmatter                                                        |
-| `make lint-agents`     | Validate agent `.md` frontmatter (warns on missing `permission:`)                    |
+| `make lint-agents`     | Validate agent `.md` frontmatter (warns on missing V2 `permissions:` list, validates rule shape) |
 
 ---
 
@@ -171,7 +173,7 @@ Skills call these CLI tools when available. Install them separately.
 
 ## Adding a New Agent
 
-1. Create `agents/<name>.md` with YAML frontmatter (`description`, `model`, `permission`)
+1. Create `agents/<name>.md` with YAML frontmatter (`description`, `model`, `permissions`) — the agent name comes from the filename
 2. Run `make lint-agents` to validate
 3. Run `make deploy`
 
