@@ -9,6 +9,14 @@ OPENCODE_AGENTS_DIR  ?= $(HOME)/.config/opencode/agents
 
 CLAUDE_SKILLS_DIR  ?= $(HOME)/.claude/skills
 
+## Set DRY_RUN=1 to preview what deploy/pull would change (rsync --dry-run).
+DRY_RUN ?=
+ifeq ($(DRY_RUN),1)
+RSYNC_DRY := --dry-run
+else
+RSYNC_DRY :=
+endif
+
 .PHONY: deploy deploy-opencode deploy-claude deploy-agents deploy-skills deploy-skills-opencode pull pull-skills pull-agents pull-claude setup setup-opencode setup-claude list-skills lint-skills list-agents lint-agents lint-docs
 
 ## Deploy everything to OpenCode and Claude Code
@@ -18,7 +26,7 @@ deploy: deploy-opencode deploy-claude deploy-agents
 ## Reuses deploy-skills-opencode so skill-only changes can ship without touching agents.
 deploy-opencode: deploy-skills-opencode
 	@echo "Deploying agents to $(OPENCODE_AGENTS_DIR)..."
-	@scripts/deploy-agents.sh "$(AGENTS_SRC)" "$(OPENCODE_AGENTS_DIR)" --md-only
+	@DRY_RUN=$(DRY_RUN) scripts/deploy-agents.sh "$(AGENTS_SRC)" "$(OPENCODE_AGENTS_DIR)" --md-only
 
 ## Skills → OpenCode + Claude Code (agents untouched)
 ## Use this to ship skill changes without clobbering live agents with a stale repo.
@@ -28,32 +36,32 @@ deploy-skills: deploy-skills-opencode deploy-claude
 deploy-skills-opencode: setup-opencode
 	@echo "Deploying skills to $(OPENCODE_SKILLS_DIR)..."
 	mkdir -p $(OPENCODE_SKILLS_DIR)
-	rsync -av --delete $(GLOBAL_SKILLS)/ $(OPENCODE_SKILLS_DIR)/
+	rsync -av --delete $(RSYNC_DRY) $(GLOBAL_SKILLS)/ $(OPENCODE_SKILLS_DIR)/
 
 ## Skills → ~/.claude/skills/ (Claude Code)
 ## --delete: mirrors the repo exactly so both harnesses expose identical skills
 deploy-claude: setup-claude
 	@echo "Deploying skills to $(CLAUDE_SKILLS_DIR)..."
-	rsync -av --delete $(GLOBAL_SKILLS)/ $(CLAUDE_SKILLS_DIR)/
+	rsync -av --delete $(RSYNC_DRY) $(GLOBAL_SKILLS)/ $(CLAUDE_SKILLS_DIR)/
 
 ## Agents → ~/.agents/ (canonical, includes partials and memory)
 deploy-agents:
-	@scripts/deploy-agents.sh "$(AGENTS_SRC)" "$(AGENTS_DIR)"
+	@DRY_RUN=$(DRY_RUN) scripts/deploy-agents.sh "$(AGENTS_SRC)" "$(AGENTS_DIR)"
 
 ## Pull changes back from deployed locations
 pull: pull-skills pull-agents pull-claude
 
 ## ~/.config/opencode/skills/ → skills/
 pull-skills:
-	rsync -av $(OPENCODE_SKILLS_DIR)/ $(GLOBAL_SKILLS)/
+	rsync -av $(RSYNC_DRY) $(OPENCODE_SKILLS_DIR)/ $(GLOBAL_SKILLS)/
 
 ## ~/.agents/ → agents/
 pull-agents:
-	rsync -av $(AGENTS_DIR)/ $(AGENTS_SRC)/
+	rsync -av $(RSYNC_DRY) $(AGENTS_DIR)/ $(AGENTS_SRC)/
 
 ## ~/.claude/skills/ → skills/ (Claude Code edits back to source)
 pull-claude:
-	rsync -av --exclude='branch' --exclude='gitlab' --exclude='hotfix' \
+	rsync -av $(RSYNC_DRY) --exclude='branch' --exclude='gitlab' --exclude='hotfix' \
 	          --exclude='standup' --exclude='status' --exclude='test' --exclude='tidy' \
 	          $(CLAUDE_SKILLS_DIR)/ $(GLOBAL_SKILLS)/
 

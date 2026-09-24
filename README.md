@@ -161,6 +161,10 @@ Skills call these CLI tools when available. Install them separately.
 | `make lint-skills`     | Validate SKILL.md frontmatter                                                        |
 | `make lint-agents`     | Validate agent `.md` frontmatter (warns on missing V2 `permissions:` list, validates rule shape) |
 
+Deploy and pull use `rsync --delete`, so they mirror the repo exactly and remove anything
+extra at the destination. Preview the actions without changing anything by adding
+`DRY_RUN=1`, e.g. `make deploy DRY_RUN=1` or `make deploy-skills DRY_RUN=1`.
+
 ---
 
 ## Adding a Skill

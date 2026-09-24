@@ -15,18 +15,24 @@ if [ "${3:-}" = "--md-only" ]; then
   MD_ONLY=true
 fi
 
+# Set DRY_RUN=1 to preview the rsync without changing the target.
+RSYNC_DRY=""
+if [ "${DRY_RUN:-}" = "1" ]; then
+  RSYNC_DRY="--dry-run"
+fi
+
 STAGING_DIR=$(mktemp -d)
 trap 'rm -rf "$STAGING_DIR"' EXIT
 
 # ── Copy source to staging ──────────────────────────────────────────
 if $MD_ONLY; then
-  find "$SOURCE_DIR" -maxdepth 1 -name "*.md" -exec cp {} "$STAGING_DIR/" \;
+  find "$SOURCE_DIR" -maxdepth 1 -name "*.md" -exec cp -p {} "$STAGING_DIR/" \;
 else
-  cp -r "$SOURCE_DIR"/* "$STAGING_DIR/" 2>/dev/null || true
+  cp -rp "$SOURCE_DIR"/* "$STAGING_DIR/" 2>/dev/null || true
 fi
 
 # ── Deploy staging → target ─────────────────────────────────────────
 mkdir -p "$TARGET_DIR"
-rsync -av --delete --exclude=memory/ "$STAGING_DIR"/ "$TARGET_DIR"/
+rsync -av --delete $RSYNC_DRY --exclude=memory/ "$STAGING_DIR"/ "$TARGET_DIR"/
 
 echo "Deployed agents to $TARGET_DIR"
