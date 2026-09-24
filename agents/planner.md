@@ -1,19 +1,27 @@
 ---
-name: planner
 description: >
   Mechanical pre-processing for implementation planning — fetches Jira tickets,
   detects ticket type, loads memory and artifact context, designs module interfaces,
   and decomposes work into vertical slices with blocking dependencies. Returns
   structured findings. Does not write artifacts.
-model: opencode-go/qwen3.6-plus
+model: opencode-go/qwen3.7-plus
 mode: subagent
-permission:
-  edit:
-    "*": deny
-    ".agents/**": allow
-  bash: allow
-  webfetch: deny
-  task: deny
+permissions:
+  - action: edit
+    resource: "*"
+    effect: deny
+  - action: edit
+    resource: ".agents/**"
+    effect: allow
+  - action: shell
+    resource: "*"
+    effect: allow
+  - action: webfetch
+    resource: "*"
+    effect: deny
+  - action: subagent
+    resource: "*"
+    effect: deny
 ---
 
 # Planner
