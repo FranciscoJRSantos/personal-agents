@@ -66,6 +66,7 @@ Primary agents are Tab-switchable during a session. Subagents run in isolated co
 |-----------------------|-------------------------------------------------|-------------------------------------------------------------|----------|
 | `reviewer`            | `/review`, "check my changes", "review !123"    | Code review (own branch or incoming MR). Auto-detects mode. | all      |
 | `observer`            | "@observer \<question\>", "@observer update"    | Maintain and explain codebase via codemaps                  | subagent |
+| `planner`             | `/plan` (delegated)                             | Mechanical planning pre-processing: fetch ticket, design module interfaces, decompose into vertical slices | subagent |
 
 ---
 
@@ -80,18 +81,6 @@ Skills pass context to each other via `.agents/artifacts/`:
 | `<TICKET>-kanban-board.md`          | `/plan`       | `/implement`                                     |
 | `<TICKET>-impl-progress.md`         | `/implement`  | `/implement` (resume)                            |
 | `<TICKET>-review-impl.md`           | `/review`     | `/ship`                                          |
-
----
-
-## Plugins
-
-OpenCode plugins fire on lifecycle events. They live in `plugins/` and are registered in `~/.config/opencode/opencode.json`.
-
-| Plugin               | Event                             | Purpose                                                |
-|----------------------|-----------------------------------|--------------------------------------------------------|
-| `auto-lint.ts`       | `tool.execute.after` (Write)      | Runs project linter on edited JS/TS files              |
-| `write-guard.ts`     | `tool.execute.before` (Write)     | Blocks Write tool on existing files (use Edit instead) |
-| `session-context.ts` | `session.created`                 | Injects impl-progress context when a session starts    |
 
 ---
 
@@ -180,17 +169,3 @@ extra at the destination. Preview the actions without changing anything by addin
 1. Create `agents/<name>.md` with YAML frontmatter (`description`, `model`, `permissions`) — the agent name comes from the filename
 2. Run `make lint-agents` to validate
 3. Run `make deploy`
-
----
-
-## Archived Skills
-
-The following skills are archived in `archive/` and not deployed. They can be restored by moving them back to `skills/` or `agents/`.
-
-| Skill                | Purpose                                                |
-|----------------------|--------------------------------------------------------|
-| `/experiment`        | Capture ML experiment results into artifact             |
-| `/experiment-review` | Pull W&B runs, display metrics, append to EXPERIMENTS.md|
-| `/report`            | Publish ML experiment report to Confluence              |
-| `/insight`           | Analytics dashboard from session data                   |
-| `experiment-analyzer`| ML metrics validation agent                             |
