@@ -32,7 +32,7 @@
 
 ## Self-correction
 - If a codemap, artifact, or convention you rely on is stale, update it before finishing the task.
-- When the user corrects you, append the rule to `.agents/conventions.md` (create it if absent) in this format: Always/Never [action] BECAUSE [reason]. Future sessions inherit it.
+- When the user corrects you, append the rule to `.agents/conventions.md` under `## Learned (unreviewed)` (create it if absent) as "Always/Never [action] BECAUSE [reason] — <date>, <context>". Never replace or merge existing rules. Run `/learn review` to keep, edit, promote or drop the unreviewed ones; promotion writes your global rules source and deploys it.
 - Never delete or weaken tests to make them pass. If a test looks wrong, stop and ask.
 - Run the project's checks (lint, types, tests) before claiming a task done — never assume they pass.
 

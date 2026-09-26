@@ -1,52 +1,78 @@
 ---
 name: learn
 description: >
-  Codify a correction or convention from the current session into AGENTS.md (global)
-  or .agents/conventions.md (project-specific) in "Always/Never [action] BECAUSE
-  [reason]" format. Use this skill whenever the user says "remember this", "add a
-  rule", "don't do that again", "learn this", "/learn", or wants to capture a lesson
-  from the session before the conversation ends.
-  Entry point: /learn [optional rule text]
+  Capture a correction or convention from the current session, append-only, into
+  the project's .agents/conventions.md. Explicit rules and detected corrections
+  both land under "## Learned (unreviewed)"; /learn review prunes them into
+  "## Always / Never" or promotes them to your global AGENTS.md. Use this skill
+  whenever the user says "remember this", "add a rule", "don't do that again",
+  "learn this", "/learn", or wants to capture a lesson from the session before
+  the conversation ends.
+  Entry point: /learn [rule] | /learn review
 ---
 
 # Learn Skill
 
-Captures a rule or correction from the current session and writes it to a durable
-location in "Always/Never [action] BECAUSE [reason]" format — before the conversation
-ends and the lesson is lost.
+Captures a rule or correction from the current session into
+`.agents/conventions.md` in "Always/Never [action] BECAUSE [reason]" format,
+without confirmation — before the conversation ends and the lesson is lost.
 
-Two destinations:
-- `AGENTS.md` — global rules that apply in all projects
-- `.agents/conventions.md` — project-specific patterns for this repo only
+`## Learned (unreviewed)` is the inbox; `/learn review` is the pruning pass that
+keeps the file worth reading. Nothing is ever replaced or merged on capture, so a
+bad capture is cheap to drop and a good one is never silently lost.
+
+---
+
+## Modes
+
+| Invocation | What it does |
+|---|---|
+| `/learn <rule text>` | Append the rule to `## Learned (unreviewed)` |
+| `/learn` (no text) | Ask what the rule is, then append |
+| `/learn review` | Walk the unreviewed rules: keep, edit, promote to global, or drop |
 
 ---
 
 ## Proactive Triggers
 
-In addition to explicit `/learn` invocations, auto-write a rule when you detect these patterns:
+In addition to explicit `/learn` invocations, capture a rule automatically when
+you detect these patterns:
 - User corrects the agent's approach ("no", "wrong", "actually", "that's not right", "don't do that", "I meant", "stop")
 - User uses prescriptive language ("always X", "never Y", "make sure to", "we should")
 - User expresses frustration about a repeated mistake or pattern
 - User provides a corrected command, syntax, or workflow after the agent made an error
 
-When one of these triggers fires, write the rule immediately — do not ask for confirmation.
-The user can always revert via git (both AGENTS.md and .agents/conventions.md are tracked).
+When one of these triggers fires, append the rule immediately — do not ask for
+confirmation. Auto-capture is project-scoped only: never write to the global
+rules without the user's explicit choice in `/learn review`. The user can always
+revert via git (`.agents/conventions.md` is tracked).
 
 ---
 
 ## Gotchas
 
-- If the user invokes `/learn <rule text>`, skip Step 1 and use that text directly.
-- Choose "Always" for positive behaviors, "Never" for prohibitions — match how the rule is naturally expressed.
-- The `## Always / Never` section must be a top-level heading. If it doesn't exist, append it at the end of the file — never insert it mid-document.
-- A rule without a BECAUSE clause is a bare directive. Bare directives lose their meaning out of context and get ignored over time. Always get the reason.
+- Always append — never replace, merge, or reorder existing rules BECAUSE the
+  unreviewed list is an information-preserving inbox and a wrong capture must stay
+  cheap to drop.
+- Always skip a rule that is near-identical to one already in the file BECAUSE a
+  duplicate inbox is noise; the existing rule already carries the lesson.
+- Always include a date and a one-line trigger context on every capture BECAUSE
+  that is what makes the review pass fast — you can judge a rule by what prompted it.
+- Never auto-write global rules BECAUSE they apply to every project and only the
+  user can decide a lesson generalises beyond this one.
+- The `## Learned (unreviewed)` heading must be top-level. Create it appending to
+  the end of the file if absent — never insert it mid-document.
+- A rule without a BECAUSE clause is a bare directive. Bare directives lose their
+  meaning out of context. Always get the reason.
 
 ---
 
 ## Step 1: Capture the Rule
 
-If the user provided rule text inline with the slash command, use it directly and skip
-to Step 2.
+If the user invoked `/learn review`, jump to [Review Mode](#review-mode).
+
+If the user provided rule text inline with the slash command, use it directly and
+skip to Step 2.
 
 Otherwise ask:
 
@@ -57,77 +83,108 @@ Otherwise ask:
 
 ## Step 2: Get the "Why"
 
-If the text does not include a causal phrase ("because", "so that", "since", or similar),
-ask for the reason:
+If the text does not include a causal phrase ("because", "so that", "since", or
+similar), ask for the reason:
 
-> "Why should this rule exist? This becomes the BECAUSE clause — the reason is what makes
-> the rule durable and applicable to new situations."
+> "Why should this rule exist? This becomes the BECAUSE clause — the reason is what
+> makes the rule durable and applicable to new situations."
 
-Format the final rule:
+Format the final rule body:
 - `Always [action] BECAUSE [reason]`
 - `Never [action] BECAUSE [reason]`
 
 ---
 
-## Step 3: Check for Duplicates (Auto-Merge)
+## Step 3: Append (Never Merge)
 
-Extract the 2–3 most distinctive terms from the rule and search both target files:
-
-```bash
-grep -i "[key term 1]" AGENTS.md .agents/conventions.md 2>/dev/null
-```
-
-If a similar rule is found, **auto-merge**: replace the existing rule with the new one.
-The new text takes precedence — it reflects the latest correction.
-
-If no similar rule, proceed to Step 4.
-
----
-
-## Step 4: Determine Scope
-
-Ask:
-
-> "Is this rule global (applies in all projects → AGENTS.md) or project-specific
-> (only for this repo → .agents/conventions.md)?"
-...
-- Global → `AGENTS.md` in the project root
-- Project-specific → `.agents/conventions.md` (create if it doesn't exist)
-
----
-
-## Step 5: Write the Rule
-
-Check whether the target file has an `## Always / Never` section:
+Check whether the target file already carries a near-identical rule:
 
 ```bash
-grep -n "^## Always" AGENTS.md 2>/dev/null        # or .agents/conventions.md
+grep -i "[key term]" .agents/conventions.md 2>/dev/null
 ```
 
-**If the section exists:** Read the file, find the `## Always / Never` heading, and
-append `- [formatted rule]` as the next bullet point under it (before the next `##`
-heading or EOF). Write the file back.
+Pick the 2–3 most distinctive terms from the rule. If an equivalent rule already
+exists, say so and stop — do not add a duplicate, and do not rewrite the existing
+one.
 
-**If the section does not exist:** Append the following block to the end of the file:
+Otherwise append one bullet under `## Learned (unreviewed)`:
 
 ```markdown
-
-## Always / Never
-
-- [formatted rule]
+- <Always/Never rule> — <YYYY-MM-DD>, <skill or branch label>: "<≤1-line trigger context>"
 ```
 
-Use read → modify in memory → write back. Do not use sed with complex in-place edits.
+If the file or the `## Learned (unreviewed)` heading does not exist, create it
+(the heading at the end of the file, top-level):
+
+```bash
+mkdir -p .agents
+[ -f .agents/conventions.md ] || printf '# Conventions\n\n## Always / Never\n\n## Learned (unreviewed)\n' > .agents/conventions.md
+grep -q '^## Learned (unreviewed)' .agents/conventions.md || printf '\n## Learned (unreviewed)\n' >> .agents/conventions.md
+```
+
+Use read → modify in memory → write back. Do not use `sed` for the insert.
 
 ---
 
-## Step 6: Confirm
+## Step 4: Confirm
 
 Show what was written:
 
 ```
-Rule captured:
-  File:  AGENTS.md  (or .agents/conventions.md)
+Rule captured (unreviewed):
+  File:  .agents/conventions.md
   Rule:  Never use bare except clauses BECAUSE they silently swallow all errors,
          making debugging impossible and hiding production failures.
+```
+
+If the list grows, mention `/learn review` as the pruning pass.
+
+---
+
+## Review Mode
+
+Invoked as `/learn review`. Walk `## Learned (unreviewed)` and decide each rule's
+fate. Project scope is the default; promotion to global is the user's choice.
+
+### R1: Load the inbox
+
+```bash
+cat .agents/conventions.md 2>/dev/null
+```
+
+If the file or the `## Learned (unreviewed)` heading is absent or has no bullets,
+say `Nothing unreviewed. Conventions are clean.` and stop.
+
+### R2: Decide each rule
+
+Present one rule at a time and ask what to do with it:
+
+> "Unreviewed rule: <rule>. Keep, edit, promote to global, or drop?"
+
+- **Keep** — move it to `## Always / Never`, dropping the date/context suffix so
+  that section holds clean rules.
+- **Edit** — let the user rewrite the rule first, then treat it as keep.
+- **Promote to global** — write it to this repo's global rules source
+  (`global/AGENTS.md`), then deploy it:
+  ```bash
+  make deploy-global
+  ```
+  Remove the bullet from `.agents/conventions.md` once promoted. This only works
+  where the source repo is present (it holds `global/AGENTS.md`); elsewhere, show
+  the rule and tell the user to add it to their global rules by hand.
+- **Drop** — remove the bullet.
+
+Apply the decisions with read → modify in memory → write back. Do not use `sed`.
+
+### R3: Confirm
+
+Show a summary of what happened:
+
+```
+Learned review:
+  Kept:     2  (moved to ## Always / Never)
+  Edited:   1
+  Promoted: 1  (global/AGENTS.md → make deploy-global)
+  Dropped:  1
+  Remaining unreviewed: 0
 ```
