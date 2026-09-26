@@ -1,38 +1,30 @@
 #!/usr/bin/env bash
-# deploy-agents.sh — Deploy agents to a target directory
+# deploy-agents.sh — Deploy agent items to a target dir via the manifest sync.
 #
 # Usage: deploy-agents.sh <source-dir> <target-dir> [--md-only]
 #
-#   --md-only   Copy only top-level *.md files (for ~/.config/opencode/agents/)
-#   (no flag)   Copy everything including partials/ and memory/ (for ~/.agents/)
+#   --md-only   Only top-level *.md files (for ~/.config/opencode/agents/)
+#   (no flag)   *.md files plus partials/ (for ~/.agents/)
 set -euo pipefail
 
-SOURCE_DIR="${1:?}"
+SOURCE_DIR="${1:?usage: deploy-agents.sh <source-dir> <target-dir> [--md-only]}"
 TARGET_DIR="${2:?}"
 MD_ONLY=false
-
 if [ "${3:-}" = "--md-only" ]; then
   MD_ONLY=true
 fi
 
-# Set DRY_RUN=1 to preview the rsync without changing the target.
-RSYNC_DRY=""
-if [ "${DRY_RUN:-}" = "1" ]; then
-  RSYNC_DRY="--dry-run"
+declare -a ITEMS=()
+mapfile -t MD_FILES < <(find "$SOURCE_DIR" -maxdepth 1 -name "*.md" -print | sort)
+ITEMS+=("${MD_FILES[@]}")
+if ! $MD_ONLY && [ -d "$SOURCE_DIR/partials" ]; then
+  ITEMS+=("$SOURCE_DIR/partials")
 fi
 
-STAGING_DIR=$(mktemp -d)
-trap 'rm -rf "$STAGING_DIR"' EXIT
-
-# ── Copy source to staging ──────────────────────────────────────────
-if $MD_ONLY; then
-  find "$SOURCE_DIR" -maxdepth 1 -name "*.md" -exec cp -p {} "$STAGING_DIR/" \;
-else
-  cp -rp "$SOURCE_DIR"/* "$STAGING_DIR/" 2>/dev/null || true
+if [ ${#ITEMS[@]} -eq 0 ]; then
+  echo "ERROR no agent items found in $SOURCE_DIR" >&2
+  exit 2
 fi
 
-# ── Deploy staging → target ─────────────────────────────────────────
-mkdir -p "$TARGET_DIR"
-rsync -av --delete $RSYNC_DRY --exclude=memory/ "$STAGING_DIR"/ "$TARGET_DIR"/
-
-echo "Deployed agents to $TARGET_DIR"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+exec "$SCRIPT_DIR/manifest-sync.sh" "$TARGET_DIR" "${ITEMS[@]}"

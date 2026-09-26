@@ -1,7 +1,6 @@
 GLOBAL_SKILLS      := skills
 
 AGENTS_SRC         := agents
-AGENTS_PARTIALS    := agents/partials
 AGENTS_DIR         ?= $(HOME)/.agents
 
 OPENCODE_SKILLS_DIR ?= $(HOME)/.config/opencode/skills
@@ -21,35 +20,25 @@ else
 RSYNC_DRY :=
 endif
 
-.PHONY: deploy deploy-opencode deploy-claude deploy-agents deploy-skills deploy-skills-opencode pull pull-skills pull-agents pull-claude pull-global setup setup-opencode setup-claude list-skills lint-skills list-agents lint-agents lint-docs deploy-global lint test
+.PHONY: deploy deploy-skills deploy-agents deploy-global pull pull-skills pull-agents pull-claude pull-global lint lint-skills lint-agents lint-docs test list-skills list-agents
 
-## Deploy everything to OpenCode and Claude Code
-deploy: deploy-opencode deploy-claude deploy-agents deploy-global
+## Deploy everything to OpenCode and Claude Code (skills, agents, global rules).
+## Each target dir keeps a .personal-agents-manifest; only listed items are touched.
+deploy: deploy-skills deploy-agents deploy-global
 
-## Skills → ~/.config/opencode/skills/ + Agents → ~/.config/opencode/agents/
-## Reuses deploy-skills-opencode so skill-only changes can ship without touching agents.
-deploy-opencode: deploy-skills-opencode
+## Skills → ~/.config/opencode/skills/ and ~/.claude/skills/ (agents untouched).
+## Use this to ship skill changes without clobbering live agents with a stale repo.
+deploy-skills:
+	@echo "Deploying skills to $(OPENCODE_SKILLS_DIR)..."
+	@DRY_RUN=$(DRY_RUN) scripts/manifest-sync.sh "$(OPENCODE_SKILLS_DIR)" $(GLOBAL_SKILLS)/*/
+	@echo "Deploying skills to $(CLAUDE_SKILLS_DIR)..."
+	@DRY_RUN=$(DRY_RUN) scripts/manifest-sync.sh "$(CLAUDE_SKILLS_DIR)" $(GLOBAL_SKILLS)/*/
+
+## Agents → ~/.config/opencode/agents/ (md only) and ~/.agents/ (md + partials/).
+deploy-agents:
 	@echo "Deploying agents to $(OPENCODE_AGENTS_DIR)..."
 	@DRY_RUN=$(DRY_RUN) scripts/deploy-agents.sh "$(AGENTS_SRC)" "$(OPENCODE_AGENTS_DIR)" --md-only
-
-## Skills → OpenCode + Claude Code (agents untouched)
-## Use this to ship skill changes without clobbering live agents with a stale repo.
-deploy-skills: deploy-skills-opencode deploy-claude
-
-## Skills → ~/.config/opencode/skills/ only (agents untouched)
-deploy-skills-opencode: setup-opencode
-	@echo "Deploying skills to $(OPENCODE_SKILLS_DIR)..."
-	mkdir -p $(OPENCODE_SKILLS_DIR)
-	rsync -av --delete $(RSYNC_DRY) $(GLOBAL_SKILLS)/ $(OPENCODE_SKILLS_DIR)/
-
-## Skills → ~/.claude/skills/ (Claude Code)
-## --delete: mirrors the repo exactly so both harnesses expose identical skills
-deploy-claude: setup-claude
-	@echo "Deploying skills to $(CLAUDE_SKILLS_DIR)..."
-	rsync -av --delete $(RSYNC_DRY) $(GLOBAL_SKILLS)/ $(CLAUDE_SKILLS_DIR)/
-
-## Agents → ~/.agents/ (canonical, includes partials and memory)
-deploy-agents:
+	@echo "Deploying agents to $(AGENTS_DIR)..."
 	@DRY_RUN=$(DRY_RUN) scripts/deploy-agents.sh "$(AGENTS_SRC)" "$(AGENTS_DIR)"
 
 ## Global rules → ~/.config/opencode/AGENTS.md
@@ -87,27 +76,6 @@ pull-global:
 	else \
 		rsync -av $(RSYNC_DRY) "$(GLOBAL_AGENTS_DEST)" "$(GLOBAL_AGENTS_SRC)"; \
 	fi
-
-## One-time setup: create ~/.agents/, ~/.config/opencode/, and ~/.claude/skills/
-setup:
-	@echo "=== Setting up canonical agents directory ==="
-	mkdir -p $(AGENTS_DIR)
-	@echo "Created $(AGENTS_DIR)"
-	@$(MAKE) setup-opencode
-	@$(MAKE) setup-claude
-	@echo "=== Done. Run 'make deploy' to populate. ==="
-
-## One-time setup: create ~/.config/opencode/agents/ and ~/.config/opencode/skills/
-setup-opencode:
-	mkdir -p $(OPENCODE_AGENTS_DIR)
-	mkdir -p $(OPENCODE_SKILLS_DIR)
-	@echo "Created $(OPENCODE_AGENTS_DIR)"
-	@echo "Created $(OPENCODE_SKILLS_DIR)"
-
-## One-time setup: create ~/.claude/skills/
-setup-claude:
-	mkdir -p $(CLAUDE_SKILLS_DIR)
-	@echo "Created $(CLAUDE_SKILLS_DIR)"
 
 ## List all skills
 list-skills:

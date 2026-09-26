@@ -30,11 +30,10 @@ Research-backed agent skills and subagents for software engineering workflows. E
 
 ```bash
 git clone <repo>
-make setup    # one-time: create ~/.agents/ and ~/.config/opencode/ directories
 make deploy   # sync skills and agents to OpenCode and Claude Code
 ```
 
-`make deploy` rsyncs `skills/` to `~/.config/opencode/skills/` and `~/.claude/skills/`, and agents to `~/.config/opencode/agents/` (plus `~/.agents/` for canonical partials). Both harnesses expose the identical skill set; Claude Code reads the agents via `~/.claude/agents` → `~/.agents`. It also installs your local global rules (`global/AGENTS.md`, gitignored) to `~/.config/opencode/AGENTS.md` — see [Global Rules](#global-rules).
+`make deploy` syncs `skills/` to `~/.config/opencode/skills/` and `~/.claude/skills/`, and agents to `~/.config/opencode/agents/` (plus `~/.agents/` for canonical partials). Both harnesses expose the identical skill set; Claude Code reads the agents via `~/.claude/agents` → `~/.agents`. It also installs your local global rules (`global/AGENTS.md`, gitignored) to `~/.config/opencode/AGENTS.md` — see [Global Rules](#global-rules).
 
 ---
 
@@ -151,24 +150,22 @@ make deploy-global                              # install → ~/.config/opencode
 
 ## Deployment Targets
 
-| Command                | What it does                                                                         |
-|------------------------|--------------------------------------------------------------------------------------|
-| `make setup`           | One-time: create `~/.agents/` and `~/.config/opencode/` directories                  |
-| `make deploy`          | Sync skills + agents + global rules to OpenCode and Claude Code                      |
-| `make deploy-opencode` | Sync skills to `~/.config/opencode/skills/` + agents to `~/.config/opencode/agents/` |
-| `make deploy-skills`   | Sync skills to OpenCode + Claude only — leaves live agents untouched                 |
-| `make deploy-skills-opencode` | Sync skills to `~/.config/opencode/skills/` only — leaves agents untouched    |
-| `make deploy-claude`   | Sync skills to `~/.claude/skills/` (mirrors the repo with `--delete`; agents come via the `~/.agents` symlink) |
-| `make deploy-agents`   | Sync agents to `~/.agents/` (includes partials)                                      |
-| `make deploy-global`   | Install `global/AGENTS.md` → `~/.config/opencode/AGENTS.md` (gitignored source; skips if absent) |
-| `make pull`            | Pull changes from deployed locations back into the repo                              |
-| `make pull-global`     | Copy `~/.config/opencode/AGENTS.md` → `global/AGENTS.md`                             |
-| `make lint-skills`     | Validate SKILL.md frontmatter                                                        |
-| `make lint-agents`     | Validate agent `.md` frontmatter (warns on missing V2 `permissions:` list, validates rule shape) |
+| Command              | What it does                                                                         |
+|----------------------|--------------------------------------------------------------------------------------|
+| `make deploy`        | Sync skills + agents + global rules to OpenCode and Claude Code                      |
+| `make deploy-skills` | Sync skills to OpenCode + Claude only — leaves live agents untouched                 |
+| `make deploy-global` | Install `global/AGENTS.md` → `~/.config/opencode/AGENTS.md` (gitignored source; skips if absent) |
+| `make pull`          | Pull changes from deployed locations back into the repo                              |
+| `make pull-global`   | Copy `~/.config/opencode/AGENTS.md` → `global/AGENTS.md`                             |
+| `make lint-skills`   | Validate SKILL.md frontmatter                                                        |
+| `make lint-agents`   | Validate agent `.md` frontmatter (warns on missing V2 `permissions:` list, validates rule shape) |
 
-Skill and agent deploys use `rsync --delete`, so they mirror the repo exactly and remove anything
-extra at the destination. The global-rules deploy writes a single file (no `--delete`). Preview
-any of them without changing anything by adding `DRY_RUN=1`, e.g. `make deploy DRY_RUN=1`.
+Skill and agent deploys are manifest-based: each target dir keeps a
+`.personal-agents-manifest` listing what this repo deployed, and only those items are
+ever updated or removed — anything else at the destination (e.g. `~/.claude/skills/synced/`,
+plugin skills, hand-made agents) is left alone. The global-rules deploy writes a single
+file. Preview any deploy without changing anything by adding `DRY_RUN=1`, e.g.
+`make deploy DRY_RUN=1`.
 
 ---
 
