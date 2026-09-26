@@ -173,8 +173,10 @@ Based on the resolved decisions, suggest one or more of:
 
 - `/plan` — to create an implementation plan from resolved decisions
 - Post to Jira via MCP — to turn these decisions into a ticket
-- `/adr` — to capture a significant architectural decision from this session
 ```
+
+The log is local working state, not the record. Each decision must reach the
+commit message of the work it drives — that is where the "why" lives on.
 
 Set `ticket:` to the Jira key when the grilled work maps to a ticket, so
 `/plan <KEY>` can find this log; use `ticket: null` otherwise. `/plan
@@ -197,3 +199,5 @@ End with a concise summary confirming the artifact was saved.
   unresolved question blocks downstream decisions, note that explicitly.
 - **No Jira writes** — grill-me produces a decision artifact, not a ticket.
   Post to Jira via MCP after the session.
+- **Decisions live in commits** — the log is local working state; every resolved
+  decision must reach the commit message of the work it drives.

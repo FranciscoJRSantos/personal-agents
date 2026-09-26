@@ -51,7 +51,6 @@ make deploy   # sync skills and agents to OpenCode and Claude Code
 | `/ship`         | `/ship`                               | Checks → fresh-review gate → autosquash → push → MR; close artifacts last |
 | `/codemap`      | `/codemap`                            | Generate hierarchical architectural codemap of the codebase               |
 | `/learn`        | `/learn [rule]`                       | Capture a session correction into AGENTS.md or .agents/conventions.md     |
-| `/adr`          | `/adr [decision]`                     | Record architecture decisions with context, rationale, and alternatives   |
 | `/create-skill` | `/create-skill [skill\|agent] [name]` | Guide creation of new skills and agents using research-backed checklist   |
 | `/handoff`      | `/handoff [focus]`                    | Compact the session into a handoff doc + sync STATE.md for the next agent |
 
@@ -111,11 +110,6 @@ Skills call these CLI tools when available. Install them separately.
 **Capture a lesson before closing a session:**
 ```
 /learn never use bare except clauses because they hide all errors silently
-```
-
-**Record an architectural choice:**
-```
-/adr switched from polling to webhooks for event delivery
 ```
 
 **Context hygiene between major steps:**
