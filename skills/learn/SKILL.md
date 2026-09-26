@@ -116,8 +116,15 @@ Otherwise append one bullet under `## Learned (unreviewed)`:
 If the file or the `## Learned (unreviewed)` heading does not exist, create it
 (the heading at the end of the file, top-level):
 
+<!-- agents-gitignore:begin — shared verbatim across every skill that writes into .agents/; make lint-agents checks identity -->
 ```bash
+# .agents/ is agent state: ignore everything except the shared, tracked files.
 mkdir -p .agents
+[ -f .agents/.gitignore ] || printf '*\n!.gitignore\n!conventions.md\n!review.md\n' > .agents/.gitignore
+```
+<!-- agents-gitignore:end -->
+
+```bash
 [ -f .agents/conventions.md ] || printf '# Conventions\n\n## Always / Never\n\n## Learned (unreviewed)\n' > .agents/conventions.md
 grep -q '^## Learned (unreviewed)' .agents/conventions.md || printf '\n## Learned (unreviewed)\n' >> .agents/conventions.md
 ```

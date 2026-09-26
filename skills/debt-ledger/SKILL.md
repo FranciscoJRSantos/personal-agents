@@ -86,6 +86,18 @@ If nothing found: `No deferred: debt. Clean ledger.`
 If the user asks to save it, write to `.agents/artifacts/debt-ledger.md`
 with YAML frontmatter:
 
+<!-- agents-gitignore:begin — shared verbatim across every skill that writes into .agents/; make lint-agents checks identity -->
+```bash
+# .agents/ is agent state: ignore everything except the shared, tracked files.
+mkdir -p .agents
+[ -f .agents/.gitignore ] || printf '*\n!.gitignore\n!conventions.md\n!review.md\n' > .agents/.gitignore
+```
+<!-- agents-gitignore:end -->
+
+```bash
+mkdir -p .agents/artifacts
+```
+
 ```yaml
 ---
 artifact: debt-ledger

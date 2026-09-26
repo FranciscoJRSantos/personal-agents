@@ -199,6 +199,28 @@ lint-agents:
 	fi; \
 	rm -rf "$$tmp"; \
 	echo ""; \
+	echo "=== Checking shared .agents/.gitignore snippet ==="; \
+	tmp=$$(mktemp -d); \
+	ref=""; \
+	gi_ok=true; \
+	for f in "$(GLOBAL_SKILLS)/grill-me/SKILL.md" "$(GLOBAL_SKILLS)/plan/SKILL.md" "$(GLOBAL_SKILLS)/implement/SKILL.md" "$(GLOBAL_SKILLS)/review/SKILL.md" "$(GLOBAL_SKILLS)/ship/SKILL.md" "$(GLOBAL_SKILLS)/codemap/SKILL.md" "$(GLOBAL_SKILLS)/handoff/SKILL.md" "$(GLOBAL_SKILLS)/learn/SKILL.md" "$(GLOBAL_SKILLS)/debt-ledger/SKILL.md" "$(AGENTS_SRC)/observer.md"; do \
+		out="$$tmp/$$(printf '%s' "$$f" | tr '/' '_')"; \
+		sed -n '/agents-gitignore:begin/,/agents-gitignore:end/p' "$$f" > "$$out"; \
+		if [ ! -s "$$out" ]; then \
+			echo "FAIL  .agents/.gitignore snippet missing in $$f"; \
+			ok=false; gi_ok=false; \
+		elif [ -z "$$ref" ]; then \
+			ref="$$out"; \
+		elif ! diff -q "$$ref" "$$out" >/dev/null; then \
+			echo "FAIL  .agents/.gitignore snippet differs in $$f"; \
+			ok=false; gi_ok=false; \
+		fi; \
+	done; \
+	if [ "$$gi_ok" = true ] && [ -n "$$ref" ]; then \
+		echo "OK    .agents/.gitignore snippet identical"; \
+	fi; \
+	rm -rf "$$tmp"; \
+	echo ""; \
 	echo "=== Checking generated Claude agent variants ==="; \
 	gen=$$(mktemp -d); \
 	if ! scripts/deploy-agents.sh --emit "$$gen" "$(AGENTS_SRC)" >/dev/null 2>&1; then \

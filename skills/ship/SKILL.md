@@ -339,6 +339,14 @@ Show the MR URL when done.
 Only after the push and MR succeed, mark the artifacts closed so an aborted ship
 never leaves them falsely closed. Reuse the `${LABEL}` resolved in Step 2.
 
+<!-- agents-gitignore:begin — shared verbatim across every skill that writes into .agents/; make lint-agents checks identity -->
+```bash
+# .agents/ is agent state: ignore everything except the shared, tracked files.
+mkdir -p .agents
+[ -f .agents/.gitignore ] || printf '*\n!.gitignore\n!conventions.md\n!review.md\n' > .agents/.gitignore
+```
+<!-- agents-gitignore:end -->
+
 ```bash
 CLOSED=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
 

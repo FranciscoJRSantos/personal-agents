@@ -58,6 +58,14 @@ Write to `.agents/handoffs/<timestamp>.md` with a bash heredoc, containing:
   `/implement`, `/review`, `/ship`, `/codemap`, `/status`), with the entry point
 - **Redactions** — note anything deliberately omitted for secrecy
 
+<!-- agents-gitignore:begin — shared verbatim across every skill that writes into .agents/; make lint-agents checks identity -->
+```bash
+# .agents/ is agent state: ignore everything except the shared, tracked files.
+mkdir -p .agents
+[ -f .agents/.gitignore ] || printf '*\n!.gitignore\n!conventions.md\n!review.md\n' > .agents/.gitignore
+```
+<!-- agents-gitignore:end -->
+
 ```bash
 mkdir -p .agents/handoffs
 ts=$(date +%Y%m%d-%H%M%S)

@@ -132,7 +132,20 @@ Generate a slug from the topic:
 echo "<topic>" | sed 's/[^a-zA-Z0-9]/-/g' | tr '[:upper:]' '[:lower:]' | sed 's/--*/-/g; s/^-//; s/-$//'
 ```
 
-Save `.agents/artifacts/grill-<slug>-decisions.md`:
+Save `.agents/artifacts/grill-<slug>-decisions.md`. First make sure `.agents/`
+ignores its own state:
+
+<!-- agents-gitignore:begin — shared verbatim across every skill that writes into .agents/; make lint-agents checks identity -->
+```bash
+# .agents/ is agent state: ignore everything except the shared, tracked files.
+mkdir -p .agents
+[ -f .agents/.gitignore ] || printf '*\n!.gitignore\n!conventions.md\n!review.md\n' > .agents/.gitignore
+```
+<!-- agents-gitignore:end -->
+
+```bash
+mkdir -p .agents/artifacts
+```
 
 ```markdown
 ---

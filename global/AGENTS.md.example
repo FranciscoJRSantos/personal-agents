@@ -35,6 +35,10 @@
 - **Deferral Convention:** Mark deliberate shortcuts with `deferred:` comments in code — format: `# deferred: <ceiling>, <upgrade path>`. Example: `# deferred: global lock, per-account locks if throughput matters`. Run `/debt-ledger` to harvest all deferrals into a tracked ledger.
 - Edit skills and agents only in their source repository, never in the deployed locations BECAUSE the next deploy overwrites anything changed outside the repo.
 
+## Commit Messages
+- Always prefix commit subjects with a conventional-commit type tag (`fix:`, `feat:`, `chore:`, `docs:`) BECAUSE the history is scanned by type, not read end to end.
+- Always sign off commit bodies with `Co-Authored-By: AI Assistant` BECAUSE that is the established attribution trailer for AI-assisted work.
+
 ## Self-correction
 - If a codemap, artifact, or convention you rely on is stale, update it before finishing the task.
 - When the user corrects you, append the rule to `.agents/conventions.md` under `## Learned (unreviewed)` (create it if absent) as "Always/Never [action] BECAUSE [reason] — <date>, <context>". Never replace or merge existing rules. Run `/learn review` to keep, edit, promote or drop the unreviewed ones; promotion writes your global rules source and deploys it.

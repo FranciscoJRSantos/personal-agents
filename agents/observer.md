@@ -118,6 +118,16 @@ Don't fabricate architecture that doesn't exist.
 
 ### Step 1: Load Change Detection State
 
+Make sure `.agents/` ignores its own state before writing anything there:
+
+<!-- agents-gitignore:begin — shared verbatim across every skill that writes into .agents/; make lint-agents checks identity -->
+```bash
+# .agents/ is agent state: ignore everything except the shared, tracked files.
+mkdir -p .agents
+[ -f .agents/.gitignore ] || printf '*\n!.gitignore\n!conventions.md\n!review.md\n' > .agents/.gitignore
+```
+<!-- agents-gitignore:end -->
+
 ```bash
 STATE_FILE=".agents/codemap/codemap.json"
 CODEMAP_DIR=".agents/codemap"
