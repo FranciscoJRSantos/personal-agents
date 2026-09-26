@@ -302,7 +302,7 @@ Before showing the plan to the user, run an automated verification against it:
 1. **AC-to-Step traceability:** Does every acceptance criterion from the ticket have at least one implementation step that addresses it?
 2. **Step-to-Verification traceability:** Does every implementation step have a corresponding test/verification section?
 3. **Circular dependencies:** Are any steps in the plan mutually dependent on each other?
-4. **TBD metrics:** Scan for "TBD", "to be determined", "to be defined" in metrics, thresholds, and criteria — these duplicate the Step 7 scan but this is an earlier catch.
+4. **TBD metrics (ML and CI/CD plans only):** Scan for "TBD", "to be determined", "to be defined" in metrics, thresholds, and criteria — this duplicates the Step 7 gate but is an earlier catch.
 
 Run these checks against the generated plan text. If any issues are found, fix them in the plan before proceeding. If all checks pass, proceed.
 
@@ -374,7 +374,9 @@ slices:
 
 Show the full plan and the Kanban board decomposition.
 
-**Before asking for approval, scan all success metrics and thresholds for placeholder values.** Check the Evaluation Criteria table (ML plans), Definition of Done (CI/CD plans), and Acceptance Criteria (Feature plans) for:
+**For ML experiment and CI/CD plans only, scan success metrics and thresholds for
+placeholder values before asking for approval.** Check the Evaluation Criteria
+table (ML plans) and Definition of Done (CI/CD plans) for:
 - The literal string "TBD" or "to be determined" or "to be defined"
 - Blank / empty threshold cells
 - Qualitative-only descriptions with no numeric bound (e.g. "improves performance", "reduces latency", "better than baseline")
@@ -392,8 +394,9 @@ Please provide a specific numeric threshold for each before this plan can be app
 ```
 
 Only show the approval prompt once all thresholds are concrete and numeric (or
-explicitly N/A with a stated reason). The prompt names what approval does in the
-current mode:
+explicitly N/A with a stated reason). Feature, API QoL and Epic plans skip this
+gate — their acceptance criteria are testable conditions, not numeric thresholds.
+The prompt names what approval does in the current mode:
 
 - **Jira key:** *"Does this plan look right? Say 'approved' to post it as a Jira comment and write artifacts, or tell me what to adjust."*
 - **Grill log:** *"Does this plan look right? Say 'approved' to write the plan and kanban artifacts, or tell me what to adjust."*
