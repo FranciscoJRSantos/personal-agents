@@ -21,7 +21,7 @@ else
 RSYNC_DRY :=
 endif
 
-.PHONY: deploy deploy-opencode deploy-claude deploy-agents deploy-skills deploy-skills-opencode pull pull-skills pull-agents pull-claude pull-global setup setup-opencode setup-claude list-skills lint-skills list-agents lint-agents lint-docs deploy-global
+.PHONY: deploy deploy-opencode deploy-claude deploy-agents deploy-skills deploy-skills-opencode pull pull-skills pull-agents pull-claude pull-global setup setup-opencode setup-claude list-skills lint-skills list-agents lint-agents lint-docs deploy-global lint test
 
 ## Deploy everything to OpenCode and Claude Code
 deploy: deploy-opencode deploy-claude deploy-agents deploy-global
@@ -116,6 +116,13 @@ list-skills:
 ## List all agents
 list-agents:
 	@echo "Agents ($(shell ls $(AGENTS_SRC)/*.md 2>/dev/null | wc -l)):" && ls $(AGENTS_SRC)/*.md 2>/dev/null | xargs -n1 basename 2>/dev/null || echo "(no agents)"
+
+## Run the converter unit tests (pytest from mise python)
+test:
+	python3 -m pytest -q tests/
+
+## Validate skills, agents and docs, then run the tests
+lint: lint-skills lint-agents lint-docs test
 
 ## Validate SKILL.md files before deploying
 lint-skills:
