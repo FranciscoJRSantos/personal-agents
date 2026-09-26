@@ -238,13 +238,21 @@ TARGET_BRANCH=""
 
 # 1. Find the actual parent branch by merge-base recency. The parent branch's
 #    tip is the most recent common ancestor: the smallest number of commits
-#    between the merge-base and HEAD wins.
+#    between the merge-base and HEAD wins. On a tie — e.g. main was
+#    fast-forwarded to a merged feature branch's tip, so both share the same
+#    merge-base — prefer the trunk branch by name; a plain lexicographic sort
+#    would otherwise pick the stale, already-merged feature branch.
 TARGET_BRANCH=$(
   for candidate in $(git branch --format='%(refname:short)' | grep -v "^${BRANCH}$"); do
     base=$(git merge-base HEAD "$candidate" 2>/dev/null) || continue
     [ -z "$base" ] && continue
-    echo "$(git rev-list --count "$base"..HEAD) $candidate"
-  done | sort -n | head -1 | awk '{print $2}'
+    case "$candidate" in
+      main|master|trunk) rank=0 ;;
+      develop) rank=1 ;;
+      *) rank=2 ;;
+    esac
+    echo "$(git rev-list --count "$base"..HEAD) $rank $candidate"
+  done | sort -n -k1,1 -k2,2 | head -1 | awk '{print $3}'
 )
 
 # 2. Fall back to git-flow naming conventions if detection failed.
