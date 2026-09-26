@@ -283,19 +283,17 @@ Group the module interfaces from Step 4 into slices by dependency order:
 
 1. Identify modules with no dependencies — these form the first slice(s)
 2. Group remaining modules by their dependency chain
-3. Assign each slice an ID, title, description, and tags
+3. Assign each slice an ID, title, description, and mode
 
 **Slice rules:**
 - Each acceptance criterion → at least one slice that addresses it
-- Slices with no blocking dependencies can be tagged `parallel` — they can run concurrently
-- Slices needing user judgment → tag `afk` (away from keyboard)
-- Slices needing human review of AI output → tag `hitl` (human in the loop)
+- Every slice defaults to `mode: hitl` — it stops at the gate for human review
+- `mode: afk` is only for work that can run unattended: pure refactors, boilerplate,
+  or changes fully covered by tests with cheap failure modes. Justify every `afk`
+  slice in its `description`; when in doubt, use `hitl`
+- Slices with no blocking dependencies can run concurrently — that is derivable
+  from `blocked_by: []`, so it needs no separate tag
 - Slices that block others should have their `blocks` field set
-
-**Tags:**
-- `afk` — slice requires user judgment (parameter selection, design decisions)
-- `hitl` — slice needs human review of AI output
-- `parallel` — slice has no blocking relationships — can run in parallel
 
 Example vertical slice decomposition:
 
@@ -304,33 +302,33 @@ slices:
   - id: 1
     title: "Define types and schemas"
     description: "Core data types that all downstream modules depend on"
+    mode: hitl
     blocks: [2, 3]
     blocked_by: []
     module_interfaces:
       - module: "src/models.py"
         public_interface: "Item(BaseModel), ItemCreate(Item), ItemUpdate(Item)"
         test_boundaries: "Construction, validation, serialization"
-    tags: []
   - id: 2
     title: "Implement business logic"
     description: "Pure domain logic for item processing"
+    mode: hitl
     blocks: [5]
     blocked_by: [1]
     module_interfaces:
       - module: "src/service.py"
         public_interface: "process_item(item: Item) -> Result, validate_schema(data: dict) -> Item"
         test_boundaries: "Happy path, edge cases, error states"
-    tags: []
   - id: 3
     title: "Add API endpoints"
     description: "REST endpoints for CRUD operations"
+    mode: hitl
     blocks: [5]
     blocked_by: [1]
     module_interfaces:
       - module: "src/api.py"
         public_interface: "POST /items, GET /items/{id}, DELETE /items/{id}"
         test_boundaries: "Status codes, payload validation, auth errors"
-    tags: [parallel]
 ```
 
 ---
@@ -453,15 +451,13 @@ slices:
   - id: 1
     title: <slice title>
     description: <what this slice delivers>
+    mode: hitl          # or: afk — justify every afk in the description
     blocks: [<slice IDs>]
     blocked_by: [<slice IDs>]
     module_interfaces:
       - module: <path>
         public_interface: <methods/types>
         test_boundaries: <boundary description>
-    tags: [afk|hitl|parallel]
-    status: pending
-    completed: null
   - id: 2
     ...
 ---
@@ -482,4 +478,4 @@ A good plan should:
 - Surface risks or ambiguities the ticket author may not have considered
 - Leave the "out of scope" section explicit, not implied
 - Decompose into vertical slices where each slice delivers something testable
-- Tag slices appropriately (afk, hitl, parallel) for correct routing during implementation
+- Set each slice's mode (default `hitl`; justify every `afk`) for correct routing during implementation

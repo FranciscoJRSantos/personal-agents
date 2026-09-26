@@ -28,7 +28,7 @@ TDD is built into the loop (Red → Green → Refactor). Context is cleared betw
   main context in the "smart zone" and avoids context bloat.
 - Pull coding conventions from project AGENTS.md at the start of each slice (Step 4).
   Do NOT load them in Step 1 — only the slice's own conventions are needed.
-- If a slice is tagged `afk`, stop at the gate and wait for user input before proceeding.
+- A slice's `mode` drives the gate: `hitl` (the default) stops for human review, `afk` may run unattended.
 - If the last slice completes, mark the artifact as complete and recommend `/review`.
 - Bug fix = root cause, not symptom. Before editing, grep every caller of the function you
   touch. Fix the shared function once — one guard there is a smaller diff than one per caller,
@@ -92,22 +92,24 @@ If found with `status: complete` — warn:
 
 ## Step 2: Display the Kanban Board
 
-Show the slice dependency graph to the user:
+Show the slice dependency graph to the user. The board carries no per-slice state —
+`Status` comes from the impl-progress artifact:
 
 ```
 ## Kanban Board: <LABEL>
 
-| Slice | Title | Blocks | Blocked By | Tags | Status |
+| Slice | Title | Blocks | Blocked By | Mode | Status |
 |-------|-------|--------|------------|------|--------|
-| 1     | ...   | [2]    | []         | —    | pending |
-| 2     | ...   | [3]    | [1]        | —    | pending |
+| 1     | ...   | [2]    | []         | hitl | pending |
+| 2     | ...   | [3]    | [1]        | hitl | pending |
 | 3     | ...   | []     | [2]        | afk  | pending |
 ```
 
 Identify which slice(s) are unblocked (no blockers, or all blockers complete):
 
 - **First unblocked slice:** Slice [N]
-- **Parallel candidates:** Slices [M, O] can run in parallel if tagged `parallel`
+- **Parallel candidates:** Slices [M, O] can run in parallel when their
+  `blocked_by` lists are satisfied
 
 Ask the user which slice to start with:
 
@@ -355,12 +357,11 @@ Present the slice summary:
 ```
 
 Gate conditions:
-- **`afk` tag** — stop and wait for user judgment:
-  > "This slice is tagged `afk` — please review and confirm before proceeding."
-- **`hitl` tag** — stop and request human review:
-  > "This slice is tagged `hitl` — please review the AI output and approve or request changes."
-- **No special tags** — standard gate:
-  > "Slice <N> complete. Say 'approved' to continue to the next slice, or tell me what to adjust."
+- **`mode: hitl`** (the default) — stop and request human review:
+  > "This slice is `hitl` — please review the output and approve or request changes."
+- **`mode: afk`** — may run unattended only when checks are green and the inner
+  review found no Critical items; otherwise degrade to the `hitl` gate above.
+- **No mode field** — treat it as `hitl` (default) and use the `hitl` gate.
 
 **Do not proceed until the user approves.**
 

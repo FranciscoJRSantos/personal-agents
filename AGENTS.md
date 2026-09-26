@@ -35,30 +35,10 @@ Skills communicate via `.agents/artifacts/` files — each reads the previous st
 
 ### Kanban Board Schema
 
-The Kanban board produced by `/plan` defines vertical slices with blocking relationships for parallel execution:
-
-```yaml
----
-artifact: kanban-board
-ticket: <TICKET>
-skill: plan
-created: <ISO 8601 timestamp>
-status: active
-slices:
-  - id: 1
-    title: <slice title>
-    description: <what this slice delivers, crossing all layers>
-    blocks: [<slice IDs that depend on this>]
-    blocked_by: [<slice IDs this depends on>]
-    module_interfaces:
-      - module: <file path>
-        public_interface: <methods/types exported>
-        test_boundaries: <what to test at the boundary>
-    tags: [afk|hitl|parallel]
-    status: pending
-    completed: <ISO 8601 timestamp or null>
----
-```
+The Kanban board schema is defined once in `/plan` (`skills/plan/SKILL.md`) — not
+copied here. Each slice carries `mode: afk | hitl` (default `hitl`; `/plan`
+justifies every `afk`) and its blocking relationships through `blocks`/`blocked_by`.
+The board is the plan; per-slice state lives in the impl-progress artifact.
 
 ### Vertical Slice impl-progress Schema
 
@@ -87,16 +67,6 @@ completed_slices: []
 `status` values: `pending`, `in_progress`, `complete`, `skipped`
 `TDD (RGR)` values: `pending`, `done`, `skipped`
 `Checks` values: `pass`, `fail`, `—`
-
-## Kanban Board State
-
-The Kanban board file (`<TICKET>-kanban-board.md`) tracks which slices are blockable and which can run in parallel:
-
-- **`afk`** tag: slice requires user judgment (parameter selection, design decisions)
-- **`hitl`** tag: slice needs human review of AI output
-- **`parallel`** tag: slice has no blocking relationships — can run in parallel with other `parallel` slices
-
-Slices with `blocked_by: []` (no blockers) can start immediately. Slices with `blocked_by: [N]` must wait until slice N is `complete`.
 
 ## Execution Rules
 
