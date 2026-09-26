@@ -5,9 +5,10 @@ description: >
   kanban-board artifacts to determine which slice to implement. Each slice
   crosses all layers (data → pure → edge → UI → integration), follows
   Red-Green-Refactor, passes an inner review, and ends in its own commit.
+  Works from a plan, or in ad-hoc mode with no plan as a single reviewed slice.
   Clear context between slices. Use this skill whenever the user says
   "implement", "start coding", "proceed with implementation", "/implement", or
-  wants to begin implementation after a plan exists.
+  wants to begin implementation.
   Entry point: /implement
 ---
 
@@ -18,6 +19,10 @@ as the source of truth. Each slice delivers something testable, crosses all laye
 passes an inner `reviewer` pass, and is committed on its own. TDD is built into the
 loop (Red → Green → Refactor). The `impl-progress` artifact carries the state
 between slices, so `/clear` never loses the resume point.
+
+With no plan artifacts, it runs in **ad-hoc mode**: one goal, one acceptance
+criterion, one reviewed commit. The baseline — tests, inner review, real commit —
+is the same; only the plan and kanban are skipped.
 
 ---
 
@@ -58,23 +63,14 @@ Read the plan artifact for full context:
 cat .agents/artifacts/${LABEL}-plan.md 2>/dev/null
 ```
 
-If not found, stop immediately:
-
-> "No plan artifact found for `${LABEL}`. Run `/plan` first to generate
-> an implementation plan before proceeding."
-
 Read the Kanban board artifact for slice definitions:
 
 ```bash
 cat .agents/artifacts/${LABEL}-kanban-board.md 2>/dev/null
 ```
 
-If not found, stop immediately:
-
-> "No kanban-board artifact found for `${LABEL}`. Run `/plan` first to
-> generate a plan with slice decomposition."
-
-Also read the progress artifact, which is the resume point:
+**If either artifact is missing, enter [ad-hoc mode](#ad-hoc-mode-no-plan) instead of
+stopping.** If both exist, also read the progress artifact, which is the resume point:
 
 ```bash
 cat .agents/artifacts/${LABEL}-impl-progress.md 2>/dev/null
@@ -91,6 +87,29 @@ If found with `status: complete` — warn:
 
 > "Implementation appears already complete. Run `/review` to review the changes,
 > or run `/status` for a full overview."
+
+---
+
+## Ad-hoc Mode (no plan)
+
+For a quick fix with no `/plan` artifacts, run a single `hitl` slice through the
+full loop. Take a one-sentence ticket from the branch label and ask for exactly two
+things:
+
+> "No plan artifacts found for `${LABEL}`. In one sentence, what is the goal? And
+> what is the single acceptance criterion that proves it works?"
+
+Then:
+
+1. Skip Step 2 (there is no board to display) and Step 3's multi-slice template;
+   write a one-row progress artifact instead — Step 3's schema with a single slice
+   whose `title` is the goal, `status: in_progress`, `commit: null`.
+2. Use the acceptance criterion where the loop would otherwise use the kanban's
+   `module_interfaces`.
+3. Run Steps 4–14 with slice `N = 1` and `mode: hitl`.
+
+Ad-hoc mode skips only the plan and kanban artifacts. It never skips the quality
+gate, TDD, the inner `reviewer` pass, or the per-slice commit.
 
 ---
 

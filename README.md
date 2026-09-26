@@ -11,7 +11,8 @@ Research-backed agent skills and subagents for software engineering workflows. E
 
 **Quick fix (no upfront design):**
 ```
-/implement → /ship
+/implement   # ad-hoc: one goal + one acceptance criterion, one reviewed commit
+/ship
 ```
 
 **Ticket already exists in Jira:**
@@ -43,7 +44,7 @@ make deploy   # sync skills and agents to OpenCode and Claude Code
 |----------------------|-------------------------------------------|-------------------------------------------------------------------------|
 | `/grill-me`          | `/grill-me [topic]`                       | Stress-test a design through adversarial decision-tree conversation     |
 | `/plan`              | `/plan TICKET`                            | Generate type-aware implementation plan → Jira comment                  |
-| `/implement`         | `/implement`                              | Staged implementation with hard gates between vertical slices           |
+| `/implement`         | `/implement`                              | Slice-by-slice TDD with per-slice commits (ad-hoc mode without a plan)  |
 | `/review`            | `/review`                                 | Severity-grouped code review vs main                                    |
 | `/yagni-review`      | `/yagni-review`                           | Over-engineering-only review: find what to delete, one line per finding |
 | `/debt-ledger`       | `/debt-ledger`                            | Harvest `deferred:` comments into a tracked debt ledger                 |
