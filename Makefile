@@ -261,19 +261,22 @@ lint-agents:
 	rm -rf "$$gen"; \
 	$$ok
 
-## Check AGENTS.md references match real skills and agents
+## Check slash-command references across AGENTS.md, every skill and every agent
 lint-docs:
 	@ok=true; \
-	echo "=== Checking skill references in AGENTS.md ==="; \
-	for ref in $$(grep -oP '\x60/\K[^/\x60 ,]+' AGENTS.md 2>/dev/null | sort -u); do \
-		case "$$ref" in skill-name|agent-name|TICKET|RUN|slug|type|query|range|name|decision|rule|clear) continue ;; esac; \
-		if [ ! -f "$(GLOBAL_SKILLS)/$$ref/SKILL.md" ]; then \
-			echo "FAIL  skill '$$ref' referenced in AGENTS.md but $(GLOBAL_SKILLS)/$$ref/SKILL.md not found"; \
-			ok=false; \
-		else \
+	echo "=== Checking slash-command references ==="; \
+	refs=$$(mktemp); \
+	grep -hoP '\x60/\K[^/\x60 ,]+' AGENTS.md $(GLOBAL_SKILLS)/*/SKILL.md $(AGENTS_SRC)/*.md 2>/dev/null | sort -u > "$$refs"; \
+	for ref in $$(cat "$$refs"); do \
+		case "$$ref" in clear|skill-name|agent-name) continue ;; esac; \
+		if [ -f "$(GLOBAL_SKILLS)/$$ref/SKILL.md" ] || [ -f "$(AGENTS_SRC)/$$ref.md" ]; then \
 			echo "OK    /$$ref"; \
+		else \
+			echo "FAIL  /$$ref referenced but no skill or agent exists"; \
+			ok=false; \
 		fi \
 	done; \
+	rm -f "$$refs"; \
 	echo ""; \
 	echo "=== Checking agent references in AGENTS.md ==="; \
 	for f in $(AGENTS_SRC)/*.md; do \
@@ -285,12 +288,11 @@ lint-docs:
 		fi \
 	done; \
 	echo ""; \
-	echo "=== Checking skill references in AGENTS.md (strict) ==="; \
-	echo ""; \
 	echo "=== Checking artifact chain integrity ==="; \
-	grep -oP '\x60<TICKET>-[^\x60]+\x60\s*\|\s*\x60/\w+' AGENTS.md 2>/dev/null \
-	| sed 's/\x60//g' \
-	| while IFS='|' read -r artifact written_by; do \
+	chain=$$(mktemp); \
+	grep -oP '\x60<TICKET>-[^\x60]+\x60\s*\|\s*\x60/\w+' AGENTS.md 2>/dev/null | sed 's/\x60//g' > "$$chain"; \
+	while IFS='|' read -r artifact written_by; do \
+		[ -n "$$artifact" ] || continue; \
 		artifact=$$(echo "$$artifact" | xargs); \
 		written_by=$$(echo "$$written_by" | xargs | cut -d' ' -f1 | tr -d '/'); \
 		skill_file="$(GLOBAL_SKILLS)/$$written_by/SKILL.md"; \
@@ -300,6 +302,7 @@ lint-docs:
 		else \
 			echo "OK    $$artifact ← /$$written_by"; \
 		fi \
-	done; \
+	done < "$$chain"; \
+	rm -f "$$chain"; \
 	echo ""; \
 	$$ok

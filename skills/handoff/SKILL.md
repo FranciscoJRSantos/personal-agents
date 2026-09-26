@@ -23,7 +23,7 @@ can continue the work without re-reading this session.
   (gitignored), `$TMPDIR` is empty on some machines, and a root-level file breaks
   `make lint-*` and `git status`.
 - Always update .agents/STATE.md (position, current_branch, decisions, blockers)
-  BECAUSE that is what `/status` and `/plan` read to bootstrap the next session.
+  BECAUSE that is what `/plan` reads to bootstrap the next session.
 - Always show the handoff and confirm before writing STATE.md BECAUSE STATE.md is
   the shared resume point and a wrong position sends the next session off course.
 - Never duplicate content already in artifacts (.agents/artifacts/*), specs, plans,
@@ -55,7 +55,7 @@ Write to `.agents/handoffs/<timestamp>.md` with a bash heredoc, containing:
 - **Context** — references to artifacts/plans/ADRs by path, never duplicated
 - **Next actions** — concrete, ordered, matching the current workflow stage
 - **Suggested skills** — which repo skills to invoke next (`/grill-me`, `/plan`,
-  `/implement`, `/review`, `/ship`, `/codemap`, `/status`), with the entry point
+  `/implement`, `/review`, `/ship`, `/codemap`), with the entry point
 - **Redactions** — note anything deliberately omitted for secrecy
 
 <!-- agents-gitignore:begin — shared verbatim across every skill that writes into .agents/; make lint-agents checks identity -->
@@ -98,4 +98,4 @@ A good handoff should:
 - Let a fresh agent continue with zero questions to the user
 - Reference artifacts rather than duplicating them
 - Be free of secrets
-- Leave STATE.md consistent so `/status` shows the correct position
+- Leave STATE.md consistent so the next session reads the correct position

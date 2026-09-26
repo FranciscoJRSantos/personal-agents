@@ -86,7 +86,7 @@ Skip directly to Step 4 (Quality Gate).
 If found with `status: complete` — warn:
 
 > "Implementation appears already complete. Run `/review` to review the changes,
-> or run `/status` for a full overview."
+> or read the plan and progress artifacts for a full overview."
 
 ---
 

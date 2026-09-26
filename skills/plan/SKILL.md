@@ -302,7 +302,7 @@ Before showing the plan to the user, run an automated verification against it:
 1. **AC-to-Step traceability:** Does every acceptance criterion from the ticket have at least one implementation step that addresses it?
 2. **Step-to-Verification traceability:** Does every implementation step have a corresponding test/verification section?
 3. **Circular dependencies:** Are any steps in the plan mutually dependent on each other?
-4. **TBD metrics:** Scan for "TBD", "to be determined", "to be defined" in metrics, thresholds, and criteria — these duplicate the Step 8 scan but this is an earlier catch.
+4. **TBD metrics:** Scan for "TBD", "to be determined", "to be defined" in metrics, thresholds, and criteria — these duplicate the Step 7 scan but this is an earlier catch.
 
 Run these checks against the generated plan text. If any issues are found, fix them in the plan before proceeding. If all checks pass, proceed.
 
@@ -523,7 +523,7 @@ slices:
 ---
 ```
 
-This artifact is read by `/implement` (to know which slice to work on) and `/status` (to show progress).
+This artifact is read by `/implement` to know which slice to work on and to resume.
 
 Run `/clear` before `/implement` to start implementation in a fresh context window.
 
