@@ -65,7 +65,6 @@ Primary agents are Tab-switchable during a session. Subagents run in isolated co
 |-----------------------|-------------------------------------------------|-------------------------------------------------------------|----------|
 | `reviewer`            | `/review`, "check my changes", "review !123"    | Code review (own branch or incoming MR). Auto-detects mode. | all      |
 | `observer`            | "@observer \<question\>", "@observer update"    | Maintain and explain codebase via codemaps                  | subagent |
-| `planner`             | `/plan` (delegated)                             | Mechanical planning pre-processing: fetch ticket, design module interfaces, decompose into vertical slices | subagent |
 
 ---
 
