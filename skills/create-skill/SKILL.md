@@ -1,7 +1,7 @@
 ---
 name: create-skill
 description: >
-  Guide the creation of a new skill or agent using the 10 research-backed OpenCode
+  Guide the creation of a new skill or agent using the 6 research-backed OpenCode
   principles as a quality checklist. Produces a ready-to-lint SKILL.md or agent .md
   file. Use this skill whenever the user says "create a skill", "new skill", "add an
   agent", "build a slash command", "/create-skill", or wants to author a new workflow
@@ -12,7 +12,7 @@ description: >
 # Create-Skill Skill
 
 Guides the design and creation of a new skill (slash command) or agent (isolated
-subagent) from scratch, applying 10 research-backed principles as a checklist before
+subagent) from scratch, applying 6 research-backed principles as a checklist before
 producing the draft. Nothing is written until the user explicitly approves.
 
 ---
@@ -134,8 +134,7 @@ A good <name> should:
 ---
 description: >
   <what it does — include trigger phrases; must end with "Does not write artifacts.">
-  OpenCode derives the agent name from the filename, so no `name:` field.
-model: sonnet
+model: <provider>/<model-id>
 mode: subagent
 permissions:
   - action: edit
@@ -182,6 +181,10 @@ After the Summary section, close with exactly one of:
 **GATE: BLOCKED — <reason>.**
 **GATE: CLEARED — <reason>.**
 ````
+
+The agent's `name` comes from its filename — never add a `name:` field. Use an
+OpenCode model id (e.g. `opencode-go/qwen3.7-plus`); deploy generates the Claude
+Code variant with `model: inherit` and a `tools` list derived from `permissions`.
 
 ---
 
@@ -236,6 +239,6 @@ A good output from this skill should:
 - Have all critical info (Gotchas, key constraints) placed before Step 1
 - Have ≤ 15 numbered steps (consolidate if more are needed)
 - Pass `make lint-skills` or `make lint-agents` on the first attempt
-- For agents: include `model: sonnet`, `mode: subagent`, and a `permissions:` list (V2 schema: `action`/`resource`/`effect` rules, broad rules first because the last match wins)
+- For agents: include an OpenCode `model` id, `mode: subagent`, and a `permissions:` list (V2 schema: `action`/`resource`/`effect` rules, broad rules first because the last match wins)
 - For agents with domain scope: include a specialist frame with named anti-patterns
 - For any file-writing step: include a confirmation gate before the write
