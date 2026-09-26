@@ -33,7 +33,7 @@ git clone <repo>
 make deploy   # sync skills and agents to OpenCode and Claude Code
 ```
 
-`make deploy` syncs `skills/` to `~/.config/opencode/skills/` and `~/.claude/skills/`, and agents to `~/.config/opencode/agents/` (plus `~/.agents/` for canonical partials). Both harnesses expose the identical skill set; Claude Code reads the agents via `~/.claude/agents` → `~/.agents`. It also installs your local global rules (`global/AGENTS.md`, gitignored) to `~/.config/opencode/AGENTS.md` — see [Global Rules](#global-rules).
+`make deploy` syncs `skills/` to `~/.config/opencode/skills/` and `~/.claude/skills/`, and agents to `~/.config/opencode/agents/` (the OpenCode source format). Claude Code needs different frontmatter, so the deploy also generates a Claude variant per agent into `~/.claude/agents/` (`name`, `description`, `model: inherit`, and a `tools` list derived from the OpenCode `permissions`); `~/.agents/` holds only the shared `partials/`. It also installs your local global rules (`global/AGENTS.md`, gitignored) to `~/.config/opencode/AGENTS.md` — see [Global Rules](#global-rules).
 
 ---
 
@@ -161,10 +161,12 @@ make deploy-global                              # install → ~/.config/opencode
 Skill and agent deploys are manifest-based: each target dir keeps a
 `.personal-agents-manifest` listing what this repo deployed, and only those items are
 ever updated or removed — anything else at the destination (e.g. `~/.claude/skills/synced/`,
-plugin skills, hand-made agents) is left alone. The global-rules deploy writes a single
-file. Preview any deploy without changing anything by adding `DRY_RUN=1`, e.g.
-`make deploy DRY_RUN=1`. After a deploy, `make drift` diffs the repo against each location
-and reports unowned extras.
+plugin skills, hand-made agents) is left alone. Agents deploy to three locations: the
+OpenCode source to `~/.config/opencode/agents/`, generated Claude variants to
+`~/.claude/agents/`, and the shared `partials/` to `~/.agents/`. The global-rules deploy
+writes a single file. Preview any deploy without changing anything by adding `DRY_RUN=1`,
+e.g. `make deploy DRY_RUN=1`. After a deploy, `make drift` diffs the repo against each
+location and reports unowned extras.
 
 ---
 
@@ -181,3 +183,6 @@ and reports unowned extras.
 1. Create `agents/<name>.md` with YAML frontmatter (`description`, `model`, `permissions`) — the agent name comes from the filename
 2. Run `make lint-agents` to validate
 3. Run `make deploy`
+
+The Claude Code variant is generated at deploy time. Never hand-edit the copy in
+`~/.claude/agents/` — edit the source and run `make deploy`.

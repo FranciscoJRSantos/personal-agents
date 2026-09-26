@@ -7,6 +7,7 @@ OPENCODE_SKILLS_DIR ?= $(HOME)/.config/opencode/skills
 OPENCODE_AGENTS_DIR  ?= $(HOME)/.config/opencode/agents
 
 CLAUDE_SKILLS_DIR  ?= $(HOME)/.claude/skills
+CLAUDE_AGENTS_DIR  ?= $(HOME)/.claude/agents
 
 ## Local global rules (gitignored). Template: global/AGENTS.md.example
 GLOBAL_AGENTS_SRC   := global/AGENTS.md
@@ -34,12 +35,23 @@ deploy-skills:
 	@echo "Deploying skills to $(CLAUDE_SKILLS_DIR)..."
 	@DRY_RUN=$(DRY_RUN) scripts/manifest-sync.sh "$(CLAUDE_SKILLS_DIR)" $(GLOBAL_SKILLS)/*/
 
-## Agents → ~/.config/opencode/agents/ (md only) and ~/.agents/ (md + partials/).
+## Agents → ~/.config/opencode/agents/ (source md), ~/.claude/agents/ (generated
+## Claude variants) and ~/.agents/ (partials only; canonical review rules).
 deploy-agents:
 	@echo "Deploying agents to $(OPENCODE_AGENTS_DIR)..."
 	@DRY_RUN=$(DRY_RUN) scripts/deploy-agents.sh "$(AGENTS_SRC)" "$(OPENCODE_AGENTS_DIR)" --md-only
-	@echo "Deploying agents to $(AGENTS_DIR)..."
-	@DRY_RUN=$(DRY_RUN) scripts/deploy-agents.sh "$(AGENTS_SRC)" "$(AGENTS_DIR)"
+	@if [ -L "$(CLAUDE_AGENTS_DIR)" ]; then \
+		if [ "$(DRY_RUN)" = "1" ]; then \
+			echo "MIGRATE $(CLAUDE_AGENTS_DIR): would replace the symlink with a real dir (target left intact)"; \
+		else \
+			echo "MIGRATE $(CLAUDE_AGENTS_DIR): replacing the symlink with a real dir (target left intact)"; \
+			rm "$(CLAUDE_AGENTS_DIR)"; \
+		fi; \
+	fi
+	@echo "Deploying generated Claude agent variants to $(CLAUDE_AGENTS_DIR)..."
+	@DRY_RUN=$(DRY_RUN) scripts/deploy-agents.sh "$(AGENTS_SRC)" "$(CLAUDE_AGENTS_DIR)" --claude
+	@echo "Deploying agent partials to $(AGENTS_DIR)..."
+	@DRY_RUN=$(DRY_RUN) scripts/deploy-agents.sh "$(AGENTS_SRC)" "$(AGENTS_DIR)" --partials-only
 
 ## Global rules → ~/.config/opencode/AGENTS.md
 ## The source file is gitignored; skips with a warning when it is absent.
@@ -58,7 +70,8 @@ drift:
 	DRY_RUN=$(DRY_RUN) scripts/manifest-sync.sh --drift "$(OPENCODE_SKILLS_DIR)" $(GLOBAL_SKILLS)/*/ || status=1; \
 	DRY_RUN=$(DRY_RUN) scripts/manifest-sync.sh --drift "$(CLAUDE_SKILLS_DIR)" $(GLOBAL_SKILLS)/*/ || status=1; \
 	DRY_RUN=$(DRY_RUN) scripts/deploy-agents.sh --drift "$(AGENTS_SRC)" "$(OPENCODE_AGENTS_DIR)" --md-only || status=1; \
-	DRY_RUN=$(DRY_RUN) scripts/deploy-agents.sh --drift "$(AGENTS_SRC)" "$(AGENTS_DIR)" || status=1; \
+	DRY_RUN=$(DRY_RUN) scripts/deploy-agents.sh --drift "$(AGENTS_SRC)" "$(CLAUDE_AGENTS_DIR)" --claude || status=1; \
+	DRY_RUN=$(DRY_RUN) scripts/deploy-agents.sh --drift "$(AGENTS_SRC)" "$(AGENTS_DIR)" --partials-only || status=1; \
 	if [ ! -f "$(GLOBAL_AGENTS_SRC)" ]; then \
 		echo "INFO  $(GLOBAL_AGENTS_SRC) not found — skipping global rules drift"; \
 	elif [ ! -f "$(GLOBAL_AGENTS_DEST)" ]; then \
@@ -163,6 +176,45 @@ lint-agents:
 		ok=false; \
 	fi; \
 	rm -rf "$$tmp"; \
+	echo ""; \
+	echo "=== Checking generated Claude agent variants ==="; \
+	gen=$$(mktemp -d); \
+	if ! scripts/deploy-agents.sh --emit "$$gen" "$(AGENTS_SRC)" >/dev/null 2>&1; then \
+		echo "FAIL  could not generate Claude agent variants"; \
+		ok=false; \
+	else \
+		for f in "$$gen"/*.md; do \
+			[ -e "$$f" ] || continue; \
+			agent=$$(basename "$$f" .md); \
+			fm=$$(sed -n '1,/^---$$/p' "$$f"); \
+			if [ "$$(echo "$$fm" | yq eval 'select(di==0) | .name')" != "$$agent" ]; then \
+				echo "FAIL  $$agent: generated 'name' missing or wrong"; \
+				ok=false; \
+				continue; \
+			fi; \
+			desc=$$(echo "$$fm" | yq eval 'select(di==0) | .description // ""' | grep -v '^null$$' | head -1); \
+			if [ -z "$$desc" ] || [ "$$desc" = '""' ]; then \
+				echo "FAIL  $$agent: generated 'description' missing"; \
+				ok=false; \
+				continue; \
+			fi; \
+			if [ "$$(echo "$$fm" | yq eval 'select(di==0) | .model')" != "inherit" ]; then \
+				echo "FAIL  $$agent: generated model must be 'inherit'"; \
+				ok=false; \
+				continue; \
+			fi; \
+			tools=$$(echo "$$fm" | yq eval 'select(di==0) | .tools'); \
+			for t in Read Grep Glob; do \
+				echo "$$tools" | grep -qw "$$t" || { echo "FAIL  $$agent: generated tools missing $$t"; ok=false; }; \
+			done; \
+			if echo "$$fm" | grep -q 'opencode-go/'; then \
+				echo "FAIL  $$agent: generated variant still references an OpenCode model"; \
+				ok=false; \
+			fi; \
+			echo "OK    $$agent"; \
+		done; \
+	fi; \
+	rm -rf "$$gen"; \
 	$$ok
 
 ## Check AGENTS.md references match real skills and agents

@@ -36,8 +36,9 @@ fi
 DRY_RUN="${DRY_RUN:-0}"
 
 # Refuse to write through a symlinked target (a swapped symlink would let
-# --delete act on an unexpected tree). --drift is read-only, so it skips this.
-if [ "$DRIFT" != true ] && [ -L "$TARGET_DIR" ]; then
+# --delete act on an unexpected tree). --drift and DRY_RUN only read, so they
+# skip this check.
+if [ "$DRIFT" != true ] && [ "$DRY_RUN" != "1" ] && [ -L "$TARGET_DIR" ]; then
   echo "ERROR target is a symlink; refusing to write through it: $TARGET_DIR" >&2
   exit 1
 fi

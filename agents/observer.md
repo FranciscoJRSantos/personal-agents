@@ -190,9 +190,12 @@ For each changed folder, build:
 
 ### Step 4: Write Updated Codemap Files
 
-Update `.agents/codemap/<folder>-codemap.md` for each changed folder:
+This agent's Claude Code variant has no Write/Edit tool — it writes files with
+Bash heredocs. Its OpenCode variant can also edit directly, but use heredocs so
+both harnesses behave the same. Write each changed folder's map like this:
 
-```markdown
+```bash
+cat > ".agents/codemap/<FOLDER>-codemap.md" << 'CODEMAP_EOF'
 # <FOLDER>/ — Responsibility Summary
 
 ## Responsibility
@@ -212,13 +215,13 @@ Update `.agents/codemap/<folder>-codemap.md` for each changed folder:
 ## Integration Points
 - **Depends on:** [external folders or packages]
 - **Consumed by:** [other folders that import from here]
+CODEMAP_EOF
 ```
 
-Update `.agents/codemap/codemap.md` (the root atlas):
-
-- Refresh the `Folder Map` table for changed folders
-- Update `Architecture Notes` if structural changes affect cross-cutting concerns
-- Keep `Generated:` timestamp current
+Rewrite `.agents/codemap/codemap.md` (the root atlas) the same way — the root
+atlas is the entry point, so keep the `Folder Map` table current for changed
+folders, update `Architecture Notes` if structural changes affect cross-cutting
+concerns, and keep the `Generated:` timestamp current.
 
 Update `.agents/codemap/codemap.json` with the new hashes by re-running the
 shared state block from Step 2, this time adding

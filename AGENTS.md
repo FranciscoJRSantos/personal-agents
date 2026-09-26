@@ -9,7 +9,7 @@ skills/<name>/SKILL.md   ← one skill per file
 agents/<name>.md                ← one agent per file
 ```
 
-`make deploy` syncs skills to `~/.config/opencode/skills/` and agents to `~/.config/opencode/agents/` and `~/.agents/`. OpenCode discovers both automatically.
+`make deploy` syncs skills to `~/.config/opencode/skills/` and `~/.claude/skills/`. Agents deploy to three places: the source `.md` files to `~/.config/opencode/agents/`, generated Claude Code variants to `~/.claude/agents/`, and the shared `partials/` to `~/.agents/`. OpenCode and Claude Code discover their own automatically.
 
 Alongside skills and agents, the repo tracks a redacted template for your personal global rules at `global/AGENTS.md.example`. The real `global/AGENTS.md` is gitignored (it holds personal identity/details) and is installed to `~/.config/opencode/AGENTS.md` by `make deploy-global`.
 
