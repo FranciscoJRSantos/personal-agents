@@ -12,9 +12,10 @@ description: >
 
 # YAGNI Review
 
-Review the current branch's diff against `main` for unnecessary complexity.
-One line per finding: location, what to cut, what replaces it. The diff's
-best outcome is getting shorter.
+Review the current branch's work against its merge base, including the working
+tree and untracked files, for unnecessary complexity. One line per finding:
+location, what to cut, what replaces it. The diff's best outcome is getting
+shorter.
 
 ---
 
@@ -27,11 +28,21 @@ and performance are explicitly out of scope — route them to `/review`.
 
 ## Step 1: Get the Diff
 
+Resolve the base branch and diff from the merge base, so committed, staged,
+unstaged and untracked work all appear — the same scope the `reviewer` uses:
+
 ```bash
-git diff main...HEAD
+BASE=$(git merge-base main HEAD 2>/dev/null \
+  || git merge-base origin/main HEAD 2>/dev/null \
+  || git merge-base master HEAD 2>/dev/null)
+if [ -z "$BASE" ]; then echo "No base branch found — ask the user which to diff against."; fi
+
+git diff "$BASE"
+git diff "$BASE" --stat
+git ls-files --others --exclude-standard
 ```
 
-If `main` doesn't exist locally, try `origin/main`, then `master`.
+The last command lists new, untracked files — `git diff` does not show them.
 
 ---
 
