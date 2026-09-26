@@ -72,6 +72,13 @@ LABEL=${TICKET:-$(git branch --show-current | tr '/' '-')}
 ```
 <!-- artifact-label:end -->
 
+Record the commit that was reviewed, so `/ship` can tell whether the review still
+matches HEAD:
+
+```bash
+REVIEWED_HEAD=$(git rev-parse HEAD)
+```
+
 Derive the status from the reviewer's findings:
 
 - `status: clean` — no Critical or Warning findings
@@ -85,12 +92,14 @@ artifact: review-impl
 ticket: <TICKET>
 skill: review
 created: <ISO 8601 timestamp>
+reviewed_head: <REVIEWED_HEAD>
 status: clean        # or: has-findings
 ---
 ```
 
 Followed by the reviewer's full report.
 
-`/ship` reads this artifact and blocks commit if `status: has-findings`.
+`/ship` reads this artifact, checks that `reviewed_head` still matches HEAD (or
+that only `fixup!` commits follow), and blocks on `status: has-findings`.
 
 Run `/clear` before `/ship` to start the ship step in a fresh context window.

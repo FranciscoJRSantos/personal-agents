@@ -40,21 +40,21 @@ make deploy   # sync skills and agents to OpenCode and Claude Code
 
 ## Skills
 
-| Skill                | Invocation                                | Purpose                                                                 |
-|----------------------|-------------------------------------------|-------------------------------------------------------------------------|
-| `/grill-me`          | `/grill-me [topic]`                       | Stress-test a design through adversarial decision-tree conversation     |
-| `/plan`              | `/plan TICKET`                            | Generate type-aware implementation plan → Jira comment                  |
-| `/implement`         | `/implement`                              | Slice-by-slice TDD with per-slice commits (ad-hoc mode without a plan)  |
-| `/review`            | `/review`                                 | Severity-grouped code review vs main                                    |
-| `/yagni-review`      | `/yagni-review`                           | Over-engineering-only review: find what to delete, one line per finding |
-| `/debt-ledger`       | `/debt-ledger`                            | Harvest `deferred:` comments into a tracked debt ledger                 |
-| `/ship`              | `/ship`                                   | Run checks → gate on review → commit → push → MR                       |
-| `/codemap`           | `/codemap`                                | Generate hierarchical architectural codemap of the codebase             |
-| `/learn`             | `/learn [rule]`                           | Capture a session correction into AGENTS.md or .agents/conventions.md   |
-| `/adr`               | `/adr [decision]`                         | Record architecture decisions with context, rationale, and alternatives |
-| `/create-skill`      | `/create-skill [skill\|agent] [name]`     | Guide creation of new skills and agents using research-backed checklist |
-| `/update-skill`      | `/update-skill`                           | Enforce skill/agent edits in source repo, not deployed locations        |
-| `/handoff`           | `/handoff [focus]`                        | Compact the session into a handoff doc + sync STATE.md for the next agent |
+| Skill           | Invocation                            | Purpose                                                                   |
+|-----------------|---------------------------------------|---------------------------------------------------------------------------|
+| `/grill-me`     | `/grill-me [topic]`                   | Stress-test a design through adversarial decision-tree conversation       |
+| `/plan`         | `/plan TICKET`                        | Generate type-aware implementation plan → Jira comment                    |
+| `/implement`    | `/implement`                          | Slice-by-slice TDD with per-slice commits (ad-hoc mode without a plan)    |
+| `/review`       | `/review`                             | Severity-grouped code review vs main                                      |
+| `/yagni-review` | `/yagni-review`                       | Over-engineering-only review: find what to delete, one line per finding   |
+| `/debt-ledger`  | `/debt-ledger`                        | Harvest `deferred:` comments into a tracked debt ledger                   |
+| `/ship`         | `/ship`                               | Checks → fresh-review gate → autosquash → push → MR; close artifacts last |
+| `/codemap`      | `/codemap`                            | Generate hierarchical architectural codemap of the codebase               |
+| `/learn`        | `/learn [rule]`                       | Capture a session correction into AGENTS.md or .agents/conventions.md     |
+| `/adr`          | `/adr [decision]`                     | Record architecture decisions with context, rationale, and alternatives   |
+| `/create-skill` | `/create-skill [skill\|agent] [name]` | Guide creation of new skills and agents using research-backed checklist   |
+| `/update-skill` | `/update-skill`                       | Enforce skill/agent edits in source repo, not deployed locations          |
+| `/handoff`      | `/handoff [focus]`                    | Compact the session into a handoff doc + sync STATE.md for the next agent |
 
 ---
 

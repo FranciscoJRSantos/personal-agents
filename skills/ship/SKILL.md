@@ -1,16 +1,18 @@
 ---
 name: ship
 description: >
-  Run the full verification suite (lint, type check, tests), gate on the review
-  artifact, commit, push, and create a merge request. Use this skill whenever the
-  user says "ship it", "commit and push", "create MR", "open a merge request",
-  "push my branch", or wants to finalize and submit their work.
+  Run the full verification suite (lint, type check, tests), gate on a fresh
+  review artifact, autosquash fixups, push, and create a merge request. Use this
+  skill whenever the user says "ship it", "commit and push", "create MR", "open a
+  merge request", "push my branch", or wants to finalize and submit their work.
 ---
 
 # Ship Skill
 
-Run the full check suite, gate on the review artifact, commit with a well-formed
-message, push the branch, and create a GitLab MR.
+Run the full check suite, gate on a review that matches HEAD, autosquash fixups,
+push the branch, and create a merge request. Artifacts close last, so an aborted
+ship never leaves them marked closed. `/ship` does not commit — `/implement`
+owns per-slice commits (including ad-hoc mode).
 
 ---
 
@@ -19,7 +21,7 @@ message, push the branch, and create a GitLab MR.
 - If MR creation fails because one already exists for the branch (`glab mr create` / `gh pr create`), view it instead of creating a duplicate (`glab mr view` / `gh pr view`) and show the URL to the user.
 - Detect the forge from the `origin` remote before creating an MR — use `gh` for GitHub and `glab` for GitLab. If the matching CLI is missing, report it rather than failing the whole ship.
 - Never use `--no-verify` to bypass a failing pre-commit hook. Fix the underlying issue instead.
-- Do not use `git add -A`; review `git status` first and stage specific files to avoid committing `.env`, generated files, or large binaries.
+- `/ship` never commits. If the working tree is dirty, stop and send the user to `/implement` (ad-hoc mode) or a manual commit — do not stage or commit here.
 - If the branch has no upstream yet, `git push -u origin <BRANCH>` sets it automatically — no separate `git push --set-upstream` needed.
 - The `--target-branch` for the MR is detected from the branch's actual creation point (merge-base), falling back to git-flow naming conventions — never hardcode `main`.
 - If `make type_check` exits 0 but printed type errors to stderr, the Makefile may be suppressing the exit code — check the output text for error patterns, not just the exit code.
@@ -31,19 +33,33 @@ message, push the branch, and create a GitLab MR.
 
 Detect the project stack and run lint → type check → tests before anything else.
 
-### 1a. Detect Makefile Targets
+### 1a. Confirm a Clean Working Tree
+
+`/ship` does not commit, so the tree must be clean first:
+
+```bash
+git status --porcelain
+```
+
+If anything is printed (other than `.agents/` state files, which are untracked
+working state), stop:
+
+> "The working tree is dirty. Commit the work first — `/implement` in ad-hoc mode
+> does this — or commit by hand, then run `/ship` again."
+
+### 1b. Detect Makefile Targets
 
 ```bash
 grep -E '^[a-zA-Z_-]+:' Makefile 2>/dev/null | cut -d: -f1 | sort
 ```
 
-**If a `precommit` target exists**, run it directly and skip to Step 1c:
+**If a `precommit` target exists**, run it directly and skip to Step 1d:
 
 ```bash
 make precommit
 ```
 
-### 1b. Detect Stack and Run Checks
+### 1c. Detect Stack and Run Checks
 
 If no `precommit` Make target, detect the stack:
 
@@ -89,7 +105,7 @@ npm run lint
 npm test
 ```
 
-### 1c. Report Check Results
+### 1d. Report Check Results
 
 ```
 ## Check Results
@@ -102,13 +118,15 @@ npm test
 ```
 
 **On failure:** show the first 3-5 errors with file and line number. Stop and let
-the user fix before proceeding. Do not commit broken code.
+the user fix before proceeding. Do not ship broken code.
 
 **On full pass:** proceed to Step 2.
 
 ---
 
-## Step 2: Gate — Check Review Artifact
+## Step 2: Gate — Review Freshness
+
+Resolve the label and read the review artifact:
 
 <!-- artifact-label:begin — shared verbatim across /plan, /implement, /review, /ship and @reviewer; make lint-agents checks identity -->
 ```bash
@@ -118,92 +136,77 @@ LABEL=${TICKET:-$(git branch --show-current | tr '/' '-')}
 <!-- artifact-label:end -->
 
 ```bash
-cat .agents/artifacts/${LABEL}-review-impl.md 2>/dev/null
+REVIEW_FILE=".agents/artifacts/${LABEL}-review-impl.md"
+cat "$REVIEW_FILE" 2>/dev/null
 ```
 
-**If `status: has-findings`**: show the Critical and Warning items from the artifact and
-ask the user to confirm they want to proceed anyway, or address them first.
+`/review` records the commit it reviewed as `reviewed_head` in the artifact
+frontmatter. Compare it with the current HEAD before deciding:
 
-**If `status: clean` or no artifact**: proceed.
+```bash
+HEAD_SHA=$(git rev-parse HEAD)
+REVIEWED_HEAD=$(yq --front-matter=extract '.reviewed_head // ""' "$REVIEW_FILE" 2>/dev/null)
+
+if [ ! -f "$REVIEW_FILE" ]; then
+  echo "NO_REVIEW"
+elif [ -z "$REVIEWED_HEAD" ]; then
+  echo "NO_HEAD"                 # reviewed before this field existed
+elif [ "$HEAD_SHA" = "$REVIEWED_HEAD" ]; then
+  echo "FRESH"
+elif ! git merge-base --is-ancestor "$REVIEWED_HEAD" HEAD 2>/dev/null; then
+  echo "STALE"                   # history was rewritten since the review
+elif [ "$(git log --format='%s' "$REVIEWED_HEAD"..HEAD | grep -vc '^fixup!')" -eq 0 ]; then
+  echo "FIXUPS_ONLY"
+else
+  echo "STALE"
+fi
+```
+
+Act on the result:
+
+- **FRESH** — proceed.
+- **FIXUPS_ONLY** — show the commits since `reviewed_head` (they are all `fixup!`
+  corrections to already-reviewed slices), then proceed.
+- **STALE** — show the commits since `reviewed_head` and ask: re-run `/review` on
+  the new work, or proceed anyway because the changes are pre-approved.
+- **NO_HEAD** — the artifact predates freshness tracking. Treat it like STALE and
+  ask.
+- **NO_REVIEW** — soft gate:
+
+  > "No final review for this branch. Ship anyway?"
+
+  Proceed only on an explicit yes.
+
+Independently, if the artifact has `status: has-findings`, show the Critical and
+Warning items and ask the user to confirm before proceeding.
 
 ---
 
-## Step 3: Close Plan and Kanban Artifacts
+## Step 3: Autosquash Fixups
 
-Mark the plan and Kanban board artifacts as `closed` to prevent doc rot. This tells
-downstream consumers that the ticket has shipped. Reuse the `${LABEL}` resolved in
-Step 2 — do not compute it again.
-
-```bash
-CLOSED=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
-
-for f in ".agents/artifacts/${LABEL}-plan.md" ".agents/artifacts/${LABEL}-kanban-board.md"; do
-  if [ -f "$f" ]; then
-    sed -i "s/^status: .*/status: closed/" "$f"
-    # Add closed timestamp after the status line if not present
-    grep -q '^closed:' "$f" || sed -i "/^status: /a closed: $CLOSED" "$f"
-    echo "Closed: $f"
-  fi
-done
-```
-
-Also close the impl-progress artifact if it exists:
+Fold `--fixup` commits into their target slices so history reads one commit per
+slice. This runs before the push, and is skipped when the branch already has an
+upstream carrying these commits — rewriting pushed history would need a
+force-push, which `/ship` never does silently.
 
 ```bash
-[ -f ".agents/artifacts/${LABEL}-impl-progress.md" ] && sed -i "s/^status: .*/status: closed/" ".agents/artifacts/${LABEL}-impl-progress.md"
+BRANCH=$(git branch --show-current)
+
+if git rev-parse --abbrev-ref --symbolic-full-name '@{upstream}' >/dev/null 2>&1; then
+  echo "Branch has an upstream — skipping autosquash (pushed history is left alone)."
+else
+  BASE=$(git merge-base main HEAD 2>/dev/null \
+    || git merge-base origin/main HEAD 2>/dev/null \
+    || git merge-base master HEAD 2>/dev/null)
+  GIT_SEQUENCE_EDITOR=: git rebase -i --autosquash "$BASE"
+fi
 ```
+
+The freshness check in Step 2 runs first because the rebase rewrites the shas.
 
 ---
 
-## Step 4: Build the Commit Message
-
-Load the plan artifact for context:
-
-```bash
-cat .agents/artifacts/${LABEL}-plan.md 2>/dev/null | head -30
-```
-
-Format the commit message as a short story. Every change — however small — has a
-reason it was made, and that reason must be recorded before shipping.
-
-```
-<TICKET>: <narrative summary — what story does this change tell?>
-
-<Why this change was needed — the reasoning, context, or problem being solved.
-Always present, even for a small change. Pull from the plan's context/rationale.>
-
-Co-Authored-By: AI Assistant
-```
-
-Show the proposed commit message and ask the user to confirm or edit before committing.
-
----
-
-## Step 5: Commit
-
-Stage all changes (ask user to confirm staged files first):
-
-```bash
-git status
-git diff --staged --stat
-```
-
-Then commit:
-
-```bash
-git commit -m "$(cat <<'EOF'
-<TICKET>: <summary>
-
-<why this change was needed>
-
-Co-Authored-By: AI Assistant
-EOF
-)"
-```
-
----
-
-## Step 6: Push
+## Step 4: Push
 
 ```bash
 git push -u origin <BRANCH>
@@ -211,9 +214,9 @@ git push -u origin <BRANCH>
 
 ---
 
-## Step 7: Create Merge Request
+## Step 5: Create Merge Request
 
-### 7a. Detect the Forge
+### 5a. Detect the Forge
 
 ```bash
 REMOTE_URL=$(git remote get-url origin 2>/dev/null)
@@ -225,7 +228,7 @@ esac
 echo "Forge: ${FORGE}"
 ```
 
-### 7b. Detect the Target Branch
+### 5b. Detect the Target Branch
 
 Detect the branch this one was actually cut from — never hardcode a default:
 
@@ -261,7 +264,7 @@ echo "Target branch: ${TARGET_BRANCH}"
 Show the detected target branch to the user and let them override before creating
 the MR.
 
-### 7c. Create the MR
+### 5c. Create the MR
 
 Build the description from `templates/mr-description.md`, filling each section
 from the plan, the diff, and the review artifact. Include the **Breaking changes**
@@ -331,12 +334,36 @@ Show the MR URL when done.
 
 ---
 
+## Step 6: Close Artifacts (last)
+
+Only after the push and MR succeed, mark the artifacts closed so an aborted ship
+never leaves them falsely closed. Reuse the `${LABEL}` resolved in Step 2.
+
+```bash
+CLOSED=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+
+for f in ".agents/artifacts/${LABEL}-plan.md" ".agents/artifacts/${LABEL}-kanban-board.md"; do
+  if [ -f "$f" ]; then
+    sed -i "s/^status: .*/status: closed/" "$f"
+    # Add closed timestamp after the status line if not present
+    grep -q '^closed:' "$f" || sed -i "/^status: /a closed: $CLOSED" "$f"
+    echo "Closed: $f"
+  fi
+done
+
+[ -f ".agents/artifacts/${LABEL}-impl-progress.md" ] && sed -i "s/^status: .*/status: closed/" ".agents/artifacts/${LABEL}-impl-progress.md"
+```
+
+---
+
 ## Quality Bar
 
-- Never commit if the verification suite (Step 1) fails
-- Always include the reasoning in the commit message body — even for a small change
-- Always show the commit message to the user before committing
+- Never ship if the working tree is dirty — `/ship` does not commit
+- Never ship if the verification suite (Step 1) fails
+- Always check review freshness against `reviewed_head` before shipping
+- Never autosquash once the commits have been pushed
 - Always detect the MR target branch from the branch's creation point — never hardcode it
 - Always detect the forge (GitHub vs GitLab) from the origin remote — never assume one
 - Never force-push unless the user explicitly asks
 - If the branch has no upstream yet, `-u origin <BRANCH>` sets it automatically
+- Close the plan, kanban and progress artifacts only after the push and MR succeed
