@@ -1,19 +1,19 @@
 ---
 name: plan
 description: >
-  Fetches a Jira ticket, detects its type, and generates a type-aware implementation
-  plan with Kanban/DAG vertical slices. Presents the plan for approval before writing
-  it back to Jira as a comment. Produces both a plan artifact and a kanban-board artifact.
-  Use this skill whenever the user invokes /plan PROJ-123 or asks to generate an
-  implementation plan for a Jira ticket.
-  Entry point: /plan PROJ-123
+  Generates a type-aware implementation plan with Kanban/DAG vertical slices and
+  presents it for approval before writing artifacts. Sources the plan from a Jira
+  ticket (/plan PROJ-123) or from a local /grill-me decision log (/plan grill-<slug>,
+  or /plan with no argument to pick from a list). Produces both a plan artifact and
+  a kanban-board artifact.
+  Entry point: /plan PROJ-123 | /plan grill-<slug>
 ---
 
 # Plan Skill
 
-Fetches a Jira ticket and produces a structured, type-aware implementation plan
-with a Kanban board of vertical slices. Nothing is written to Jira until the user
-explicitly approves.
+Produces a structured, type-aware implementation plan with a Kanban board of
+vertical slices, sourced either from a Jira ticket or from a local `/grill-me`
+decision log. Nothing is written to Jira until the user explicitly approves.
 
 ---
 
@@ -26,16 +26,29 @@ explicitly approves.
 
 ---
 
-## Step 1: Fetch the Ticket
+## Step 1: Determine the Source
 
-Check for a local decision artifact from `/grill-me`:
+`/plan` takes one of three inputs:
+
+| Invocation | Source | Jira access |
+|---|---|---|
+| `/plan PROJ-123` | the Jira ticket | fetch + post |
+| `/plan grill-<slug>` | `.agents/artifacts/grill-<slug>-decisions.md` | none |
+| `/plan` | pick from the grill logs on disk | none |
+
+### 1a. Jira key
+
+Load only the grill logs that name this ticket — never glob for unrelated logs:
 
 ```bash
-TICKET=<PROJ-123>
-ls .agents/artifacts/grill-*-decisions.md 2>/dev/null
+KEY=PROJ-123
+for f in .agents/artifacts/grill-*-decisions.md; do
+  [ -f "$f" ] || continue
+  grep -q "^ticket: ${KEY}$" "$f" && echo "$f"
+done
 ```
 
-If found, read it to incorporate resolved decisions into the plan.
+Read any matches to incorporate resolved decisions into the plan.
 
 Fetch the ticket from Jira:
 
@@ -56,11 +69,35 @@ Extract:
 - Acceptance criteria (explicit or implied)
 - Any linked tickets or context
 
+### 1b. Grill log
+
+```bash
+SLUG=<slug>
+LOG=".agents/artifacts/grill-${SLUG}-decisions.md"
+[ -f "$LOG" ] || { echo "No grill log at $LOG"; exit 1; }
+cat "$LOG"
+```
+
+Build the plan from the log's Resolved Decisions. Do not fetch or post to Jira.
+When this plan is written, mark the log consumed (Step 8b).
+
+### 1c. No argument
+
+List the available logs and ask the user to pick one:
+
+```bash
+ls .agents/artifacts/grill-*-decisions.md 2>/dev/null
+```
+
+If there are none, ask for a Jira key and continue with 1a.
+
 ---
 
 ## Step 2: Detect Ticket Type
 
-Determine the type from the ticket content:
+Determine the type from the ticket content. In grill mode there is no Jira issue
+type — infer the plan structure from the decision log's scope, or ask the user
+which structure (ML experiment, API QoL, CI/CD, Feature, Epic) fits best.
 
 | Type | Signals |
 |------|---------|
@@ -70,7 +107,7 @@ Determine the type from the ticket content:
 | **Feature** | user story, product behaviour, acceptance criteria |
 | **Epic** | issuetype = Epic, large body of work, multiple child issues, quarter-long scope |
 
-If the ticket is an Epic, fetch child issues before proceeding to Step 3:
+If the ticket is an Epic (Jira mode only), fetch child issues before proceeding to Step 3:
 
 ```bash
 acli jira workitem search --jql 'parent = PROJ-123' --json
@@ -354,20 +391,25 @@ Please provide a specific numeric threshold for each before this plan can be app
 (e.g. "AUC-ROC ≥ 0.85" rather than "improves AUC-ROC").
 ```
 
-Only show the approval prompt once all thresholds are concrete and numeric (or explicitly N/A with a stated reason):
+Only show the approval prompt once all thresholds are concrete and numeric (or
+explicitly N/A with a stated reason). The prompt names what approval does in the
+current mode:
 
-*"Does this plan look right? Say 'approved' to post it as a Jira comment and write artifacts, or tell me what to adjust."*
+- **Jira key:** *"Does this plan look right? Say 'approved' to post it as a Jira comment and write artifacts, or tell me what to adjust."*
+- **Grill log:** *"Does this plan look right? Say 'approved' to write the plan and kanban artifacts, or tell me what to adjust."*
 
-Do not write to Jira yet.
+Do not write anything yet.
 
 ---
 
-## Step 8: Write to Jira and Artifacts
+## Step 8: Write Artifacts
 
 The user must say "approved", "yes", "lgtm", or similar. If they ask for changes,
 revise the plan and show the updated version.
 
-### 8a. Write to Jira
+### 8a. Write to Jira (Jira key mode only)
+
+Skip this step entirely in grill mode — there is no Jira ticket to comment on.
 
 First check available flags:
 
@@ -422,19 +464,29 @@ LABEL=${TICKET:-$(git branch --show-current | tr '/' '-')}
 ```
 <!-- artifact-label:end -->
 
-Write `.agents/artifacts/<LABEL>-plan.md`:
+Write `.agents/artifacts/<LABEL>-plan.md`. `ticket` is the Jira key argument in
+Jira mode and `null` in grill mode; `status` is `posted` in Jira mode and `active`
+in grill mode:
 
 ```yaml
 ---
 artifact: plan
-ticket: <TICKET>
+ticket: <Jira key or null>
 skill: plan
 created: <ISO 8601 timestamp>
-status: posted
+status: posted        # or: active in grill mode
 ---
 ```
 
 Followed by the full plan content.
+
+In grill mode, mark the source log as consumed so the same decisions are not
+planned twice:
+
+```bash
+LOG=".agents/artifacts/grill-<slug>-decisions.md"
+grep -q '^consumed_by:' "$LOG" || sed -i "/^skill: grill-me/a consumed_by: ${LABEL}-plan.md" "$LOG"
+```
 
 ### 8c. Write Kanban Board Artifact
 
@@ -443,7 +495,7 @@ Write `.agents/artifacts/<LABEL>-kanban-board.md`:
 ```yaml
 ---
 artifact: kanban-board
-ticket: <TICKET>
+ticket: <Jira key or null>
 skill: plan
 created: <ISO 8601 timestamp>
 status: active

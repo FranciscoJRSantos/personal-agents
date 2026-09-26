@@ -140,6 +140,7 @@ artifact: grill-decisions
 slug: <slug>
 skill: grill-me
 created: <ISO 8601 timestamp>
+ticket: <PROJ-123 or null>
 ---
 
 ## Context
@@ -174,6 +175,10 @@ Based on the resolved decisions, suggest one or more of:
 - Post to Jira via MCP — to turn these decisions into a ticket
 - `/adr` — to capture a significant architectural decision from this session
 ```
+
+Set `ticket:` to the Jira key when the grilled work maps to a ticket, so
+`/plan <KEY>` can find this log; use `ticket: null` otherwise. `/plan
+grill-<slug>` reads it without any Jira access.
 
 End with a concise summary confirming the artifact was saved.
 
