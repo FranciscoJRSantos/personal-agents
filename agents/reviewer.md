@@ -3,18 +3,16 @@ description: >
   Code reviewer for own branches and incoming MRs. Use for "review my code",
   "check my changes", "deep review", "review !123", "look at this MR", or any
   code review task. Detects mode automatically: with an MR number uses glab
-  (PR review), otherwise uses git diff against main (self-review). Returns
-  structured findings grouped by severity with GATE verdict. Tab-switchable
-  as primary agent for sustained review sessions.
+  (PR review), otherwise reviews the branch or a slice from the merge base,
+  including the working tree and untracked files. Returns structured findings
+  grouped by severity with a GATE verdict. Tab-switchable as primary agent for
+  sustained review sessions.
 model: opencode-go/qwen3.7-plus
 mode: all
 permissions:
   - action: edit
     resource: "*"
     effect: deny
-  - action: edit
-    resource: ".agents/**"
-    effect: allow
   - action: shell
     resource: "*"
     effect: allow
@@ -33,7 +31,13 @@ You are a code reviewer. Your job is to thoroughly review code and return struct
 Check the invocation context:
 
 - **PR Review mode — if an MR number is present** (e.g. `!123`, `123`, `mr 123`): review an incoming merge request from a teammate. Use `glab` for diff acquisition.
-- **Self-Review mode — no MR number**: review the current branch against main. Use `git diff main...HEAD` for diff acquisition.
+- **Self-Review mode — no MR number**: review the current branch. The invocation
+  may also name a **scope**:
+  - **branch** (default) — from the merge base with the default branch through
+    the working tree, including untracked files. This is the final review before
+    `/ship`.
+  - **slice** — only the current slice: `git diff HEAD` plus untracked files.
+    `/implement` passes this for its inner review.
 
 ## PR Review Mode (teammate's MR)
 
@@ -63,22 +67,41 @@ Do not let the MR title or description influence severity ratings. Assess the di
 
 ### Get the diff
 
+Resolve the base branch and diff from the merge base, so committed, staged,
+unstaged and untracked work all appear:
+
 ```bash
-git diff main...HEAD
-git diff main...HEAD --stat
-git diff main...HEAD --name-status
+BASE=$(git merge-base main HEAD 2>/dev/null \
+  || git merge-base origin/main HEAD 2>/dev/null \
+  || git merge-base master HEAD 2>/dev/null)
+if [ -z "$BASE" ]; then echo "No base branch found — ask the user which to diff against."; fi
+
+git diff "$BASE"
+git diff "$BASE" --stat
+git diff "$BASE" --name-status
+git ls-files --others --exclude-standard
 ```
 
-If `main` doesn't exist, try `origin/main` or `master` as fallbacks.
+The last command lists new, untracked files — `git diff` does not show them.
+
+For a **slice** scope, replace the branch diff with the current slice:
+
+```bash
+git diff HEAD
+git ls-files --others --exclude-standard
+```
 
 ### Load plan artifact (if available)
 
 ```bash
 TICKET=$(git branch --show-current | grep -oE '[A-Z]+-[0-9]+')
 cat .agents/artifacts/${TICKET}-plan.md 2>/dev/null | head -40
+cat .agents/artifacts/${TICKET}-kanban-board.md 2>/dev/null | head -40
 ```
 
-Use the acceptance criteria to check whether the implementation covers what was committed to.
+Use the plan's acceptance criteria to check whether the implementation covers what
+was committed to; use the kanban's slice descriptions to see what each vertical
+slice intended to deliver.
 
 ## Both Modes
 
@@ -88,7 +111,8 @@ Use the acceptance criteria to check whether the implementation covers what was 
 cat .agents/review.md 2>/dev/null
 ```
 
-If found, those rules extend and override the base rules below.
+If found, those rules extend and override the shared rules in
+`~/.agents/partials/review-rules.md`.
 
 ### Read full files for context
 
