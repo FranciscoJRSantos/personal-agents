@@ -30,3 +30,7 @@ When implementing (especially inside `/implement` slice work), auto-write memori
 Auto-write rules via `/learn` for:
 - Corrections the user made to command syntax or workflow steps
 - Project-specific conventions expressed during the session
+
+## Commit message conventions
+- Always prefix commit subjects with a conventional-commit type tag (`fix:`, `feat:`, `chore:`, `docs:`) BECAUSE the repo reads a typed commit head for a scannable history.
+- Always sign off commit bodies with `Co-Authored-By: AI Assistant` BECAUSE that is this repo's established attribution trailer.
