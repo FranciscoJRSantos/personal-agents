@@ -42,6 +42,11 @@ def make_heading(level: int, text: str) -> dict:
     return {"type": "heading", "attrs": {"level": level}, "content": parse_inline(text)}
 
 
+def make_code_block(language: str, text: str) -> dict:
+    attrs = {"language": language} if language else {}
+    return {"type": "codeBlock", "attrs": attrs, "content": [{"type": "text", "text": text}]}
+
+
 def make_list_item(text: str) -> dict:
     return {"type": "listItem", "content": [make_paragraph(text)]}
 
@@ -77,12 +82,21 @@ def markdown_to_adf(markdown_text: str) -> dict:
             i += 1
             continue
 
-        if line.startswith('## '):
-            content.append(make_heading(2, line[3:]))
+        if line.startswith('```'):
+            language = line[3:].strip().strip('`')
+            code_lines = []
             i += 1
+            while i < len(lines) and not lines[i].startswith('```'):
+                code_lines.append(lines[i])
+                i += 1
+            if i < len(lines):
+                i += 1  # closing fence
+            content.append(make_code_block(language, '\n'.join(code_lines)))
             continue
-        if line.startswith('### '):
-            content.append(make_heading(3, line[4:]))
+
+        heading = re.match(r'^(#{1,6})\s+(.*)$', line)
+        if heading:
+            content.append(make_heading(len(heading.group(1)), heading.group(2)))
             i += 1
             continue
 
@@ -122,9 +136,16 @@ def markdown_to_adf(markdown_text: str) -> dict:
 
         para_lines = []
         while (i < len(lines) and lines[i].strip() != '' and
-               not lines[i].startswith('#') and
+               not lines[i].startswith('```') and
+               not re.match(r'^#{1,6}\s+', lines[i]) and
                not lines[i].startswith('- ') and
                not re.match(r'^\d+\.\s', lines[i])):
+            para_lines.append(lines[i])
+            i += 1
+        if not para_lines:
+            # A non-blank line reached here that no earlier block consumed (e.g. a
+            # stray `#` not matching the heading pattern). Consume at least one line so
+            # the loop always advances.
             para_lines.append(lines[i])
             i += 1
         para_text = ' '.join(para_lines)
