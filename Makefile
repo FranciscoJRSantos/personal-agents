@@ -177,6 +177,28 @@ lint-agents:
 	fi; \
 	rm -rf "$$tmp"; \
 	echo ""; \
+	echo "=== Checking shared artifact-label snippet ==="; \
+	tmp=$$(mktemp -d); \
+	ref=""; \
+	label_ok=true; \
+	for f in "$(GLOBAL_SKILLS)/plan/SKILL.md" "$(GLOBAL_SKILLS)/implement/SKILL.md" "$(GLOBAL_SKILLS)/review/SKILL.md" "$(GLOBAL_SKILLS)/ship/SKILL.md" "$(AGENTS_SRC)/reviewer.md"; do \
+		out="$$tmp/$$(printf '%s' "$$f" | tr '/' '_')"; \
+		sed -n '/artifact-label:begin/,/artifact-label:end/p' "$$f" > "$$out"; \
+		if [ ! -s "$$out" ]; then \
+			echo "FAIL  artifact-label snippet missing in $$f"; \
+			ok=false; label_ok=false; \
+		elif [ -z "$$ref" ]; then \
+			ref="$$out"; \
+		elif ! diff -q "$$ref" "$$out" >/dev/null; then \
+			echo "FAIL  artifact-label snippet differs in $$f"; \
+			ok=false; label_ok=false; \
+		fi; \
+	done; \
+	if [ "$$label_ok" = true ] && [ -n "$$ref" ]; then \
+		echo "OK    artifact-label snippet identical"; \
+	fi; \
+	rm -rf "$$tmp"; \
+	echo ""; \
 	echo "=== Checking generated Claude agent variants ==="; \
 	gen=$$(mktemp -d); \
 	if ! scripts/deploy-agents.sh --emit "$$gen" "$(AGENTS_SRC)" >/dev/null 2>&1; then \

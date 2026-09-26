@@ -110,10 +110,14 @@ the user fix before proceeding. Do not commit broken code.
 
 ## Step 2: Gate — Check Review Artifact
 
+<!-- artifact-label:begin — shared verbatim across /plan, /implement, /review, /ship and @reviewer; make lint-agents checks identity -->
 ```bash
-TICKET=$(git branch --show-current | grep -oE '[A-Z]+-[0-9]+')
-BRANCH=$(git branch --show-current)
-LABEL=${TICKET:-$BRANCH}
+TICKET=$(git branch --show-current | grep -oE '[A-Z]+-[0-9]+' | head -1)
+LABEL=${TICKET:-$(git branch --show-current | tr '/' '-')}
+```
+<!-- artifact-label:end -->
+
+```bash
 cat .agents/artifacts/${LABEL}-review-impl.md 2>/dev/null
 ```
 
@@ -127,11 +131,10 @@ ask the user to confirm they want to proceed anyway, or address them first.
 ## Step 3: Close Plan and Kanban Artifacts
 
 Mark the plan and Kanban board artifacts as `closed` to prevent doc rot. This tells
-downstream consumers that the ticket has shipped.
+downstream consumers that the ticket has shipped. Reuse the `${LABEL}` resolved in
+Step 2 — do not compute it again.
 
 ```bash
-TICKET=$(git branch --show-current | grep -oE '[A-Z]+-[0-9]+')
-LABEL=${TICKET:-$BRANCH}
 CLOSED=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
 
 for f in ".agents/artifacts/${LABEL}-plan.md" ".agents/artifacts/${LABEL}-kanban-board.md"; do
@@ -157,7 +160,7 @@ Also close the impl-progress artifact if it exists:
 Load the plan artifact for context:
 
 ```bash
-cat .agents/artifacts/${TICKET}-plan.md 2>/dev/null | head -30
+cat .agents/artifacts/${LABEL}-plan.md 2>/dev/null | head -30
 ```
 
 Format the commit message as a short story. Every change — however small — has a

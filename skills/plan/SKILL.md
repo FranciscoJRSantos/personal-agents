@@ -410,11 +410,21 @@ Confirm the comment was posted and show the ticket URL or key.
 
 ### 8b. Write Plan Artifact
 
+Resolve the artifact label from the current branch name — the ticket key when the
+branch carries one, otherwise the branch name with `/` replaced by `-`:
+
 ```bash
 mkdir -p .agents/artifacts
 ```
 
-Write `.agents/artifacts/<TICKET>-plan.md`:
+<!-- artifact-label:begin — shared verbatim across /plan, /implement, /review, /ship and @reviewer; make lint-agents checks identity -->
+```bash
+TICKET=$(git branch --show-current | grep -oE '[A-Z]+-[0-9]+' | head -1)
+LABEL=${TICKET:-$(git branch --show-current | tr '/' '-')}
+```
+<!-- artifact-label:end -->
+
+Write `.agents/artifacts/<LABEL>-plan.md`:
 
 ```yaml
 ---
@@ -430,7 +440,7 @@ Followed by the full plan content.
 
 ### 8c. Write Kanban Board Artifact
 
-Write `.agents/artifacts/<TICKET>-kanban-board.md`:
+Write `.agents/artifacts/<LABEL>-kanban-board.md`:
 
 ```yaml
 ---

@@ -56,14 +56,21 @@ the `GATE:` line. Do not re-run the review in the main context.
 
 ## Step 4: Write the Artifact
 
-Determine the label and create the artifacts directory:
+Determine the label and create the artifacts directory. The label comes from the
+branch name — the ticket key when the branch carries one, otherwise the branch
+name with `/` replaced by `-`. Without this, `/review` on `fix/typo` writes to a
+nonexistent `.agents/artifacts/fix/` directory.
 
 ```bash
-TICKET=$(git branch --show-current | grep -oE '[A-Z]+-[0-9]+')
-BRANCH=$(git branch --show-current)
-LABEL=${TICKET:-$BRANCH}
 mkdir -p .agents/artifacts
 ```
+
+<!-- artifact-label:begin — shared verbatim across /plan, /implement, /review, /ship and @reviewer; make lint-agents checks identity -->
+```bash
+TICKET=$(git branch --show-current | grep -oE '[A-Z]+-[0-9]+' | head -1)
+LABEL=${TICKET:-$(git branch --show-current | tr '/' '-')}
+```
+<!-- artifact-label:end -->
 
 Derive the status from the reviewer's findings:
 

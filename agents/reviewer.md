@@ -93,10 +93,16 @@ git ls-files --others --exclude-standard
 
 ### Load plan artifact (if available)
 
+<!-- artifact-label:begin — shared verbatim across /plan, /implement, /review, /ship and @reviewer; make lint-agents checks identity -->
 ```bash
-TICKET=$(git branch --show-current | grep -oE '[A-Z]+-[0-9]+')
-cat .agents/artifacts/${TICKET}-plan.md 2>/dev/null | head -40
-cat .agents/artifacts/${TICKET}-kanban-board.md 2>/dev/null | head -40
+TICKET=$(git branch --show-current | grep -oE '[A-Z]+-[0-9]+' | head -1)
+LABEL=${TICKET:-$(git branch --show-current | tr '/' '-')}
+```
+<!-- artifact-label:end -->
+
+```bash
+cat .agents/artifacts/${LABEL}-plan.md 2>/dev/null | head -40
+cat .agents/artifacts/${LABEL}-kanban-board.md 2>/dev/null | head -40
 ```
 
 Use the plan's acceptance criteria to check whether the implementation covers what

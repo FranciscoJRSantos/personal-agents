@@ -38,39 +38,42 @@ TDD is built into the loop (Red → Green → Refactor). Context is cleared betw
 
 ## Step 1: Load Artifacts
 
-Extract the ticket ID from the current branch name:
+Resolve the artifact label from the current branch name — the ticket key when the
+branch carries one, otherwise the branch name with `/` replaced by `-`:
 
+<!-- artifact-label:begin — shared verbatim across /plan, /implement, /review, /ship and @reviewer; make lint-agents checks identity -->
 ```bash
-TICKET=$(git branch --show-current | grep -oE '[A-Z]+-[0-9]+')
-echo "Ticket: ${TICKET:-<none detected>}"
+TICKET=$(git branch --show-current | grep -oE '[A-Z]+-[0-9]+' | head -1)
+LABEL=${TICKET:-$(git branch --show-current | tr '/' '-')}
 ```
+<!-- artifact-label:end -->
 
 Read the plan artifact for full context:
 
 ```bash
-cat .agents/artifacts/${TICKET}-plan.md 2>/dev/null
+cat .agents/artifacts/${LABEL}-plan.md 2>/dev/null
 ```
 
 If not found, stop immediately:
 
-> "No plan artifact found for `${TICKET}`. Run `/plan ${TICKET}` first to generate
+> "No plan artifact found for `${LABEL}`. Run `/plan` first to generate
 > an implementation plan before proceeding."
 
 Read the Kanban board artifact for slice definitions:
 
 ```bash
-cat .agents/artifacts/${TICKET}-kanban-board.md 2>/dev/null
+cat .agents/artifacts/${LABEL}-kanban-board.md 2>/dev/null
 ```
 
 If not found, stop immediately:
 
-> "No kanban-board artifact found for `${TICKET}`. Run `/plan ${TICKET}` first to
+> "No kanban-board artifact found for `${LABEL}`. Run `/plan` first to
 > generate a plan with slice decomposition."
 
 Also check for an existing progress artifact:
 
 ```bash
-cat .agents/artifacts/${TICKET}-impl-progress.md 2>/dev/null
+cat .agents/artifacts/${LABEL}-impl-progress.md 2>/dev/null
 ```
 
 If found with `status: in_progress` — display the slice table and determine the first
@@ -92,7 +95,7 @@ If found with `status: complete` — warn:
 Show the slice dependency graph to the user:
 
 ```
-## Kanban Board: <TICKET>
+## Kanban Board: <LABEL>
 
 | Slice | Title | Blocks | Blocked By | Tags | Status |
 |-------|-------|--------|------------|------|--------|
@@ -121,7 +124,7 @@ If no progress artifact exists yet:
 mkdir -p .agents/artifacts
 ```
 
-Write `.agents/artifacts/<TICKET>-impl-progress.md`:
+Write `.agents/artifacts/<LABEL>-impl-progress.md`:
 
 ```yaml
 ---
@@ -368,8 +371,8 @@ Gate conditions:
 After approval, update the progress artifact:
 
 ```bash
-TICKET=$(git branch --show-current | grep -oE '[A-Z]+-[0-9]+')
-PROGRESS_FILE=".agents/artifacts/${TICKET}-impl-progress.md"
+# Reuse the ${LABEL} resolved in Step 1 — do not compute it again.
+PROGRESS_FILE=".agents/artifacts/${LABEL}-impl-progress.md"
 NOW=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
 
 # Read current content
@@ -384,7 +387,7 @@ CONTENT=$(cat "$PROGRESS_FILE")
 Write the updated artifact back and verify:
 
 ```bash
-cat .agents/artifacts/${TICKET}-impl-progress.md
+cat .agents/artifacts/${LABEL}-impl-progress.md
 ```
 
 Also update `.agents/STATE.md`:
