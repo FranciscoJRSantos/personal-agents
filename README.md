@@ -144,7 +144,7 @@ $EDITOR global/AGENTS.md                        # fill in your details
 make deploy-global                              # install → ~/.config/opencode/AGENTS.md
 ```
 
-`make deploy-global` writes to `~/.config/opencode/AGENTS.md`. Because `~/.claude/CLAUDE.md` symlinks to that file, both OpenCode and Claude Code pick it up. `make pull-global` copies the deployed file back into `global/AGENTS.md`.
+`make deploy-global` writes to `~/.config/opencode/AGENTS.md`. Because `~/.claude/CLAUDE.md` symlinks to that file, both OpenCode and Claude Code pick it up. `make drift` diffs the deployed copy against `global/AGENTS.md`.
 
 ---
 
@@ -155,8 +155,7 @@ make deploy-global                              # install → ~/.config/opencode
 | `make deploy`        | Sync skills + agents + global rules to OpenCode and Claude Code                      |
 | `make deploy-skills` | Sync skills to OpenCode + Claude only — leaves live agents untouched                 |
 | `make deploy-global` | Install `global/AGENTS.md` → `~/.config/opencode/AGENTS.md` (gitignored source; skips if absent) |
-| `make pull`          | Pull changes from deployed locations back into the repo                              |
-| `make pull-global`   | Copy `~/.config/opencode/AGENTS.md` → `global/AGENTS.md`                             |
+| `make drift`         | Read-only diff of the repo against every deployed location (never copies)            |
 | `make lint-skills`   | Validate SKILL.md frontmatter                                                        |
 | `make lint-agents`   | Validate agent `.md` frontmatter (warns on missing V2 `permissions:` list, validates rule shape) |
 
@@ -165,7 +164,8 @@ Skill and agent deploys are manifest-based: each target dir keeps a
 ever updated or removed — anything else at the destination (e.g. `~/.claude/skills/synced/`,
 plugin skills, hand-made agents) is left alone. The global-rules deploy writes a single
 file. Preview any deploy without changing anything by adding `DRY_RUN=1`, e.g.
-`make deploy DRY_RUN=1`.
+`make deploy DRY_RUN=1`. After a deploy, `make drift` diffs the repo against each location
+and reports unowned extras.
 
 ---
 

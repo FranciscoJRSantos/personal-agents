@@ -12,7 +12,7 @@ CLAUDE_SKILLS_DIR  ?= $(HOME)/.claude/skills
 GLOBAL_AGENTS_SRC   := global/AGENTS.md
 GLOBAL_AGENTS_DEST  ?= $(HOME)/.config/opencode/AGENTS.md
 
-## Set DRY_RUN=1 to preview what deploy/pull would change (rsync --dry-run).
+## Set DRY_RUN=1 to preview what deploy/drift would change (rsync --dry-run).
 DRY_RUN ?=
 ifeq ($(DRY_RUN),1)
 RSYNC_DRY := --dry-run
@@ -20,7 +20,7 @@ else
 RSYNC_DRY :=
 endif
 
-.PHONY: deploy deploy-skills deploy-agents deploy-global pull pull-skills pull-agents pull-claude pull-global lint lint-skills lint-agents lint-docs test list-skills list-agents
+.PHONY: deploy deploy-skills deploy-agents deploy-global drift lint lint-skills lint-agents lint-docs test list-skills list-agents
 
 ## Deploy everything to OpenCode and Claude Code (skills, agents, global rules).
 ## Each target dir keeps a .personal-agents-manifest; only listed items are touched.
@@ -52,30 +52,25 @@ deploy-global:
 		rsync -av $(RSYNC_DRY) "$(GLOBAL_AGENTS_SRC)" "$(GLOBAL_AGENTS_DEST)"; \
 	fi
 
-## Pull changes back from deployed locations
-pull: pull-skills pull-agents pull-claude pull-global
-
-## ~/.config/opencode/skills/ → skills/
-pull-skills:
-	rsync -av $(RSYNC_DRY) $(OPENCODE_SKILLS_DIR)/ $(GLOBAL_SKILLS)/
-
-## ~/.agents/ → agents/
-pull-agents:
-	rsync -av $(RSYNC_DRY) $(AGENTS_DIR)/ $(AGENTS_SRC)/
-
-## ~/.claude/skills/ → skills/ (Claude Code edits back to source)
-pull-claude:
-	rsync -av $(RSYNC_DRY) --exclude='branch' --exclude='gitlab' --exclude='hotfix' \
-	          --exclude='standup' --exclude='status' --exclude='test' --exclude='tidy' \
-	          $(CLAUDE_SKILLS_DIR)/ $(GLOBAL_SKILLS)/
-
-## ~/.config/opencode/AGENTS.md → global/AGENTS.md (gitignored, local only)
-pull-global:
-	@if [ ! -f "$(GLOBAL_AGENTS_DEST)" ]; then \
-		echo "WARN  $(GLOBAL_AGENTS_DEST) not found — nothing to pull"; \
+## Read-only check: diff the repo against every deployed location. Never copies.
+drift:
+	@status=0; \
+	DRY_RUN=$(DRY_RUN) scripts/manifest-sync.sh --drift "$(OPENCODE_SKILLS_DIR)" $(GLOBAL_SKILLS)/*/ || status=1; \
+	DRY_RUN=$(DRY_RUN) scripts/manifest-sync.sh --drift "$(CLAUDE_SKILLS_DIR)" $(GLOBAL_SKILLS)/*/ || status=1; \
+	DRY_RUN=$(DRY_RUN) scripts/deploy-agents.sh --drift "$(AGENTS_SRC)" "$(OPENCODE_AGENTS_DIR)" --md-only || status=1; \
+	DRY_RUN=$(DRY_RUN) scripts/deploy-agents.sh --drift "$(AGENTS_SRC)" "$(AGENTS_DIR)" || status=1; \
+	if [ ! -f "$(GLOBAL_AGENTS_SRC)" ]; then \
+		echo "INFO  $(GLOBAL_AGENTS_SRC) not found — skipping global rules drift"; \
+	elif [ ! -f "$(GLOBAL_AGENTS_DEST)" ]; then \
+		echo "DIFF  global rules: $(GLOBAL_AGENTS_DEST) not found"; \
+		status=1; \
+	elif diff -q "$(GLOBAL_AGENTS_SRC)" "$(GLOBAL_AGENTS_DEST)" >/dev/null; then \
+		echo "OK    global rules"; \
 	else \
-		rsync -av $(RSYNC_DRY) "$(GLOBAL_AGENTS_DEST)" "$(GLOBAL_AGENTS_SRC)"; \
-	fi
+		echo "DIFF  global rules"; \
+		status=1; \
+	fi; \
+	exit $$status
 
 ## List all skills
 list-skills:

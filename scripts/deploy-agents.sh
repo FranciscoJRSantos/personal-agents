@@ -1,13 +1,20 @@
 #!/usr/bin/env bash
 # deploy-agents.sh — Deploy agent items to a target dir via the manifest sync.
 #
-# Usage: deploy-agents.sh <source-dir> <target-dir> [--md-only]
+# Usage: deploy-agents.sh [--drift] <source-dir> <target-dir> [--md-only]
 #
 #   --md-only   Only top-level *.md files (for ~/.config/opencode/agents/)
 #   (no flag)   *.md files plus partials/ (for ~/.agents/)
+#   --drift     Read-only diff (passed through to manifest-sync.sh)
 set -euo pipefail
 
-SOURCE_DIR="${1:?usage: deploy-agents.sh <source-dir> <target-dir> [--md-only]}"
+DRIFT=""
+if [ "${1:-}" = "--drift" ]; then
+  DRIFT="--drift"
+  shift
+fi
+
+SOURCE_DIR="${1:?usage: deploy-agents.sh [--drift] <source-dir> <target-dir> [--md-only]}"
 TARGET_DIR="${2:?}"
 MD_ONLY=false
 if [ "${3:-}" = "--md-only" ]; then
@@ -27,4 +34,4 @@ if [ ${#ITEMS[@]} -eq 0 ]; then
 fi
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-exec "$SCRIPT_DIR/manifest-sync.sh" "$TARGET_DIR" "${ITEMS[@]}"
+exec "$SCRIPT_DIR/manifest-sync.sh" $DRIFT "$TARGET_DIR" "${ITEMS[@]}"
