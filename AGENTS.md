@@ -42,31 +42,9 @@ The board is the plan; per-slice state lives in the impl-progress artifact.
 
 ### Vertical Slice impl-progress Schema
 
-Updated progress artifact for slice-based implementation:
-
-```yaml
----
-artifact: impl-progress
-ticket: <TICKET>
-skill: implement
-status: in_progress
-created: <ISO 8601 timestamp>
-current_slice: <slice ID>
-completed_slices: []
----
-
-## Slice Progress
-
-| Slice | Title | TDD (RGR) | Status | Completed | Checks |
-|-------|-------|-----------|--------|-----------|--------|
-| 1 | <title> | done | complete | <timestamp> | pass |
-| 2 | <title> | done | in_progress | — | — |
-| 3 | <title> | pending | pending | — | — |
-```
-
-`status` values: `pending`, `in_progress`, `complete`, `skipped`
-`TDD (RGR)` values: `pending`, `done`, `skipped`
-`Checks` values: `pass`, `fail`, `—`
+The impl-progress schema is defined once in `/implement`
+(`skills/implement/SKILL.md`) — not copied here. Its frontmatter `slices:` list is
+the state (`status`, `commit`); the body table is display-only.
 
 ## Execution Rules
 
@@ -119,15 +97,11 @@ For unfamiliar codebases, start with `/codemap` to understand the structure firs
 
 ### Inside `/implement`: Vertical Slice Loop
 
-Each slice follows a TDD cycle with clear-and-resume between slices:
-
-1. **Quality gate** — verify test framework, type checking, linting exist for target module
-2. **Explore** — read the relevant module files directly to understand current state before writing tests
-3. **Red** — write a failing test for the slice's acceptance criterion
-4. **Green** — implement the minimum code to pass the test (across all layers)
-5. **Refactor** — clean up, check conventions pulled from AGENTS.md
-6. **Verify** — run checks (lint, types, tests)
-7. **Gate** — present slice for approval, then `/clear` before next slice
+Each slice runs Explore → RED → GREEN → REFACTOR → checks → inner `reviewer` (slice
+scope, fix Critical and Warning, at most two rounds) → gate. `hitl` slices stop for
+approval and are committed once approved; `afk` slices commit themselves when green.
+Every slice lands as its own commit, and corrections use `--fixup`. See
+`skills/implement/SKILL.md` for the full loop.
 
 ## Review Rules Override
 

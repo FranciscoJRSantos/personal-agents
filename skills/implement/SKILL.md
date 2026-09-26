@@ -3,19 +3,21 @@ name: implement
 description: >
   Vertical-slice implementation with TDD inside each slice. Reads the plan and
   kanban-board artifacts to determine which slice to implement. Each slice
-  crosses all layers (data → pure → edge → UI → integration) and follows
-  Red-Green-Refactor. Clear context between slices. Use this skill whenever the
-  user says "implement", "start coding", "proceed with implementation",
-  "/implement", or wants to begin implementation after a plan exists.
+  crosses all layers (data → pure → edge → UI → integration), follows
+  Red-Green-Refactor, passes an inner review, and ends in its own commit.
+  Clear context between slices. Use this skill whenever the user says
+  "implement", "start coding", "proceed with implementation", "/implement", or
+  wants to begin implementation after a plan exists.
   Entry point: /implement
 ---
 
 # Implement Skill
 
 Guides implementation one vertical slice at a time using the Kanban board artifact
-as the source of truth. Each slice delivers something testable and crosses all layers.
-TDD is built into the loop (Red → Green → Refactor). Context is cleared between slices
-(Ralph Loop) to keep the main context lean.
+as the source of truth. Each slice delivers something testable, crosses all layers,
+passes an inner `reviewer` pass, and is committed on its own. TDD is built into the
+loop (Red → Green → Refactor). The `impl-progress` artifact carries the state
+between slices, so `/clear` never loses the resume point.
 
 ---
 
@@ -24,11 +26,13 @@ TDD is built into the loop (Red → Green → Refactor). Context is cleared betw
 - Never skip the quality gate (Step 4). If the target language has no test framework or
   type checker, install or configure one before writing any production code.
 - When exploring the module before the Red phase, read the relevant files directly. One focused exploration pass per slice.
-- After each slice completes, run `/clear` before starting the next slice. This keeps the
-  main context in the "smart zone" and avoids context bloat.
+- `impl-progress` is the resume point. A `/clear` after a `hitl` gate is recommended,
+  not required; `afk` slices can chain in one session.
 - Pull coding conventions from project AGENTS.md at the start of each slice (Step 4).
   Do NOT load them in Step 1 — only the slice's own conventions are needed.
-- A slice's `mode` drives the gate: `hitl` (the default) stops for human review, `afk` may run unattended.
+- A slice's `mode` drives the gate: `hitl` (the default) stops for human review; `afk`
+  may run unattended only when checks are green and the inner review found no Critical
+  items, otherwise it degrades to a `hitl` gate.
 - If the last slice completes, mark the artifact as complete and recommend `/review`.
 - Bug fix = root cause, not symptom. Before editing, grep every caller of the function you
   touch. Fix the shared function once — one guard there is a smaller diff than one per caller,
@@ -70,18 +74,18 @@ If not found, stop immediately:
 > "No kanban-board artifact found for `${LABEL}`. Run `/plan` first to
 > generate a plan with slice decomposition."
 
-Also check for an existing progress artifact:
+Also read the progress artifact, which is the resume point:
 
 ```bash
 cat .agents/artifacts/${LABEL}-impl-progress.md 2>/dev/null
 ```
 
-If found with `status: in_progress` — display the slice table and determine the first
-slice with `status: pending`. Announce:
+If found with `status: in_progress` — the first slice whose frontmatter `status`
+is not `complete` (or the one marked `in_progress`) is the resume point. Announce:
 
 > "Resuming implementation — Slices [N, M] are complete. Starting from Slice [K]."
 
-Skip directly to the resume point at Step 4 (Quality Gate).
+Skip directly to Step 4 (Quality Gate).
 
 If found with `status: complete` — warn:
 
@@ -126,27 +130,40 @@ If no progress artifact exists yet:
 mkdir -p .agents/artifacts
 ```
 
-Write `.agents/artifacts/<LABEL>-impl-progress.md`:
+Write `.agents/artifacts/<LABEL>-impl-progress.md`. The frontmatter `slices:` list is
+the state that Step 13 updates and Step 1 resumes from; the body table is
+display-only:
 
 ```yaml
 ---
 artifact: impl-progress
-ticket: <TICKET>
+ticket: <LABEL>
 skill: implement
 status: in_progress
 created: <ISO 8601 timestamp>
-current_slice: <SLICE_ID>
-completed_slices: []
+current_slice: <first slice id>
+slices:
+  - id: 1
+    title: <title>
+    status: pending
+    commit: null
+  - id: 2
+    title: <title>
+    status: pending
+    commit: null
 ---
 
 ## Slice Progress
 
-| Slice | Title | TDD (RGR) | Status | Completed | Checks |
-|-------|-------|-----------|--------|-----------|--------|
-| 1 | <title> | pending | pending | — | — |
-| 2 | <title> | pending | pending | — | — |
-| 3 | <title> | pending | pending | — | — |
+| Slice | Title | Mode | Status | Commit |
+|-------|-------|------|--------|--------|
+| 1 | <title> | hitl | pending | — |
+| 2 | <title> | hitl | pending | — |
 ```
+
+`status` values: `pending`, `in_progress`, `complete`, `skipped`.
+`commit` is the slice's short sha once committed, and the `--fixup` target for
+corrections (Step 12).
 
 ---
 
@@ -195,7 +212,7 @@ TEST_FILE=$(find . -path '*/test*' -name "*$(basename $(echo $FILES_CHANGED | he
 ```
 
 **If no tests exist for the module** — this is the first TDD cycle for this area. Plan
-to write the first test in Step 5.
+to write the first test in Step 6.
 
 ### Pull Conventions
 
@@ -227,6 +244,8 @@ the Kanban board:
 
 Write a test that captures the slice's acceptance criterion. The test should fail
 because the production code doesn't exist yet (or doesn't implement the behavior).
+There is no confirmation prompt — capture the failing output as evidence for the
+gate summary.
 
 Rules:
 - Write exactly one test (or a small group if the slice has multiple facets)
@@ -234,7 +253,7 @@ Rules:
 - Do NOT write any production code in this step
 - Follow existing test conventions discovered in Step 4
 
-After writing the test, run it to confirm it fails:
+Run it to confirm it fails:
 
 ```bash
 # Python
@@ -247,7 +266,7 @@ npx jest <test_file> --testNamePattern <test_name> 2>&1 | tail -15
 bundle exec rspec <test_file> -e <test_name> 2>&1 | tail -15
 ```
 
-Show the failing test output and confirm: *"Test fails as expected (RED). Proceed to GREEN phase?"*
+Record the failing command and the one-line reason it failed for the gate summary.
 
 ---
 
@@ -264,7 +283,7 @@ Rules:
 - If the plan prescribes a specific implementation, follow it — but only implement
   enough to pass the test
 
-After writing production code, run the test again to confirm it passes:
+Run the test again to confirm it passes:
 
 ```bash
 # Python
@@ -280,7 +299,7 @@ bundle exec rspec <test_file> -e <test_name> 2>&1 | tail -15
 If the test fails, iterate: fix the production code and re-run. If 3+ attempts fail,
 stop and ask the user for guidance.
 
-Show the passing test: *"Test passes (GREEN). Ready to refactor?"*
+Record the passing command and count for the gate summary.
 
 ---
 
@@ -293,7 +312,7 @@ With the test passing, refactor both test and production code:
 3. Align with project conventions from Step 4
 4. Check for edge cases that should be tested
 
-After refactoring, run the test again to confirm it still passes:
+After refactoring, run the full suite to confirm no regressions:
 
 ```bash
 # Run all tests (not just the new one) to check for regressions
@@ -308,6 +327,7 @@ bundle exec rspec 2>&1 | tail -10
 ```
 
 If any tests fail, revert the refactoring changes and try a more conservative approach.
+Record what changed (or "none") for the gate summary.
 
 ---
 
@@ -321,71 +341,131 @@ make check 2>/dev/null || make test 2>/dev/null || echo "No check target found"
 ```
 
 Report results:
-- **All passing** — proceed to gate
+- **All passing** — proceed to the inner review
 - **Failures in new code** — fix and re-run
 - **Pre-existing failures** — note as deferred items, proceed
 
 ---
 
-## Step 10: GATE — Slice Approval
+## Step 10: Inner Review
 
-Present the slice summary:
+Spawn the `reviewer` subagent on the current slice, before the gate:
+
+> `@reviewer slice`
+
+The reviewer diffs `git diff HEAD` plus untracked files — since the slice is not
+committed yet, that is exactly this slice's work. It returns findings grouped by
+severity and a `GATE:` line.
+
+Fix every **Critical** and **Warning** finding, then re-run the Step 9 checks.
+
+Cap the loop at **two review→fix rounds**. If a round still leaves Critical or Warning
+items, stop, record the remainder in the gate summary, and continue. Nit items do not
+require another round.
+
+---
+
+## Step 11: GATE — Slice Approval
+
+Present the slice summary. For a `hitl` slice one approval covers both the review and
+the commit:
 
 ```
-## Slice <N>: <title> Complete
+## Slice <N>: <title>   [mode: hitl|afk]
 
 ### What was built
 - [file 1]: <what was added/changed>
 - [file 2]: <what was added/changed>
 
-### Tests
-- <test file>: <what was tested>
-- Test count: <N> test(s)
+### Test evidence
+- RED: `<test name>` — failed: <one-line reason>
+- GREEN: <test command> — <N> passed
+- REFACTOR: <what changed, or "none">
+- Checks: lint <pass/fail> · types <pass/fail> · tests <N> passed>
 
-### TDD Cycle
-- RED: <test name> — failed as expected ✅
-- GREEN: <N> iterations — passed ✅
-- REFACTOR: <changes made> ✅
-
-### Verification
-- Lint: ✅/⚠️
-- Types: ✅/⚠️
-- Tests: ✅/⚠️
+### Inner review
+- Rounds: <N>
+- Fixed: <Critical/Warning items fixed, or "none">
+- Leftovers: <anything not fixed, with reason; otherwise "none">
 
 ### Deviations
 - [none / list of Rule N auto-fixes applied]
+
+### Proposed commit
+<LABEL>: <what this slice delivers>
+
+<why this change is needed — the reasoning, context, or problem being solved.
+Pull from the plan's context/rationale. Always present, even for a small change.>
+
+Co-Authored-By: AI Assistant
 ```
 
 Gate conditions:
-- **`mode: hitl`** (the default) — stop and request human review:
-  > "This slice is `hitl` — please review the output and approve or request changes."
-- **`mode: afk`** — may run unattended only when checks are green and the inner
-  review found no Critical items; otherwise degrade to the `hitl` gate above.
-- **No mode field** — treat it as `hitl` (default) and use the `hitl` gate.
+- **`mode: hitl`** (the default) — stop and request approval:
+  > "Slice <N> is `hitl` — review the summary and commit message; approve to commit, or tell me what to adjust."
+- **`mode: afk`** — when checks are green and no Critical item remains, commit
+  without waiting and continue to the next unblocked slice. Otherwise degrade to
+  the `hitl` gate above.
+- **No mode field** — treat it as `hitl` (default).
 
-**Do not proceed until the user approves.**
+**Do not commit a `hitl` slice until the user approves.**
 
 ---
 
-## Step 11: Update Progress Artifact
+## Step 12: Commit the Slice
 
-After approval, update the progress artifact:
+Stage the slice's files explicitly (never `git add -A`), then commit with the
+approved message. The subject is the label resolved in Step 1:
 
 ```bash
-# Reuse the ${LABEL} resolved in Step 1 — do not compute it again.
-PROGRESS_FILE=".agents/artifacts/${LABEL}-impl-progress.md"
-NOW=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+git status
+git add <files for this slice>
+git commit -m "$(cat <<'EOF'
+<LABEL>: <what this slice delivers>
 
-# Read current content
-CONTENT=$(cat "$PROGRESS_FILE")
+<why this change is needed — the reasoning, context, or problem being solved.
+Pull from the plan's context/rationale. Always present, even for a small change.>
 
-# Update the current slice row: TDD=RGR → done, Status → complete, Completed → now, Checks → pass
-# Find the slice by ID and update its row
-# Set current_slice to the next unblocked slice ID
-# Append slice ID to completed_slices list
+Co-Authored-By: AI Assistant
+EOF
+)"
 ```
 
-Write the updated artifact back and verify:
+### Corrections to an earlier slice
+
+If a later slice, the inner review, or the final `/review` corrects work from an
+earlier slice, commit the correction as a fixup against that slice's commit sha
+(recorded in `impl-progress`):
+
+```bash
+git commit --fixup=<slice sha>
+```
+
+`/ship` autosquashes fixups into their targets before pushing, so history stays one
+commit per slice.
+
+---
+
+## Step 13: Update Progress Artifact
+
+Record the slice's `status` and `commit` in the frontmatter and advance
+`current_slice`. Use `--front-matter=process` so `yq` leaves the markdown body
+alone, and `strenv()` because `yq` v4.53 has no `--arg` (plain `yq -i` fails on
+the body's markdown):
+
+```bash
+PROGRESS_FILE=".agents/artifacts/${LABEL}-impl-progress.md"
+COMMIT_SHA=$(git rev-parse --short HEAD)
+export SLICE_ID=<N> NEW_STATUS=complete COMMIT_SHA
+yq --front-matter=process -i '(.slices[] | select((.id | tostring) == strenv(SLICE_ID)) | .status) = strenv(NEW_STATUS)' "$PROGRESS_FILE"
+yq --front-matter=process -i '(.slices[] | select((.id | tostring) == strenv(SLICE_ID)) | .commit) = strenv(COMMIT_SHA)' "$PROGRESS_FILE"
+
+# Point current_slice at the next unblocked slice
+export NEXT_SLICE=<id>
+yq --front-matter=process -i '.current_slice = (strenv(NEXT_SLICE) | tonumber)' "$PROGRESS_FILE"
+```
+
+Keep the display-only body table in sync by hand. Verify the result:
 
 ```bash
 cat .agents/artifacts/${LABEL}-impl-progress.md
@@ -397,7 +477,7 @@ Also update `.agents/STATE.md`:
 ---
 last_updated: <NOW>
 current_branch: <BRANCH>
-position: implement — slice <N> complete
+position: implement — slice <N> committed
 ---
 ## Decisions
 - <decisions made during this slice>
@@ -408,18 +488,19 @@ position: implement — slice <N> complete
 
 ---
 
-## Step 12: Clear and Resume
+## Step 14: Clear and Resume
 
 If there are more slices to implement:
 
-> "Slice <N> is done. Run `/clear` to start fresh, then `/implement` to continue with Slice <M>."
+> "Slice <N> is committed. Run `/clear` to start fresh, then `/implement` to continue with Slice <M>."
 
-The progress artifact carries state between cleared contexts — `/implement` reads it in Step 1
-and resumes at the correct slice.
+The progress artifact carries state between cleared contexts — `/implement` reads it in
+Step 1 and resumes at the correct slice. `afk` slices may continue in the same session
+without a clear.
 
 ---
 
-## Step 13: All Slices Complete
+## Step 15: All Slices Complete
 
 When the last slice is done:
 
@@ -451,56 +532,12 @@ Run `/clear` before `/review` to keep review context focused.
 
 ---
 
-## Helper: Quality Gate Script
-
-Reusable check for test infrastructure (Step 4). Run this at the start of each slice:
-
-```bash
-quality_gate() {
-  local lang=$1
-  case "$lang" in
-    python)
-      uv run pytest --collect-only -q 2>/dev/null && echo "pytest: available"
-      uv run ruff check . 2>/dev/null && echo "ruff: available"
-      uv run mypy . 2>/dev/null && echo "mypy: available"
-      ;;
-    typescript)
-      npx jest --passWithNoTests 2>/dev/null && echo "jest: available"
-      npx tsc --noEmit 2>/dev/null && echo "tsc: available"
-      npx eslint . 2>/dev/null && echo "eslint: available"
-      ;;
-    ruby)
-      bundle exec rspec --dry-run 2>/dev/null && echo "rspec: available"
-      bundle exec rubocop 2>/dev/null && echo "rubocop: available"
-      ;;
-  esac
-}
-```
-
----
-
-## Helper: Pull Conventions Script
-
-Reusable convention puller (Step 4). Run this at the start of each slice:
-
-```bash
-pull_conventions() {
-  local lang=$1
-  echo "=== AGENTS.md ==="
-  grep -A5 "$lang" AGENTS.md 2>/dev/null || true
-  echo "=== Conventions ==="
-  cat .agents/conventions.md 2>/dev/null || echo "(no project conventions)"
-}
-```
-
----
-
 ## Authentication Gate Protocol
 
 Auth errors during execution are *gates*, not bugs. Indicators: "Not authenticated", "Not logged in", "Unauthorized", "401", "403", "Please run {tool} login", "Set {ENV_VAR}".
 
 When encountered during any slice:
-1. Recognize it's an auth gate, not a Rule 1 bug
+1. Recognize it's an auth gate, not a bug to auto-fix
 2. STOP the current task immediately
 3. Show the user exactly what command to run or credential to provide (e.g. `glab auth login`, `huggingface-cli login`, API key name)
 4. Provide a verification command to confirm auth is working
@@ -543,6 +580,7 @@ A good implementation under this skill should:
 - Deliver each slice as a vertical cross-section — types, logic, edge, and wiring in one pass
 - Keep slices small enough to review in one glance
 - Pass the quality gate before writing code
-- Pass full verification before presenting for gate approval
+- Pass the inner review and full verification before the gate
+- Commit each slice on its own with a why body — git history is the record
 - Pull conventions (don't push them) — keep implementer context lean
-- Hand off to `/clear` between slices
+- Hand off via `impl-progress`, clearing context at `hitl` gates
