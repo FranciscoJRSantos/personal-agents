@@ -377,21 +377,30 @@ First check available flags:
 acli jira workitem comment --help
 ```
 
-Then convert the markdown plan to Atlassian Document Format (ADF) and post it:
+Then convert the markdown plan to Atlassian Document Format (ADF) and post it.
+The converter sits beside this `SKILL.md`. Claude Code substitutes
+`${CLAUDE_SKILL_DIR}` in the skill content, while OpenCode exposes no such
+substitution, so fall back to its deployed path:
 
 ```bash
+# Resolve this skill's directory
+SKILL_DIR="${CLAUDE_SKILL_DIR}"
+[ -n "$SKILL_DIR" ] || SKILL_DIR="$HOME/.config/opencode/skills/plan"
+
 # Save the plan markdown to a temp file
 PLAN_MD=$(mktemp)
 cat > "$PLAN_MD" <<'EOF'
 [paste the full approved plan markdown here]
 EOF
 
-# Convert to ADF JSON
+# Convert to ADF JSON, guarding against a converter hang
 PLAN_JSON=$(mktemp)
-python3 ~/.config/opencode/skills/plan/md_to_adf.py "$PLAN_MD" "$PLAN_JSON"
-
-# Post the ADF comment
-acli jira workitem comment create --key PROJ-123 --body-file "$PLAN_JSON"
+if timeout 10 python3 "$SKILL_DIR/md_to_adf.py" "$PLAN_MD" "$PLAN_JSON"; then
+  acli jira workitem comment create --key PROJ-123 --body-file "$PLAN_JSON"
+else
+  echo "ADF conversion failed or timed out — posting the plan as plain text instead."
+  acli jira workitem comment create --key PROJ-123 --body-file "$PLAN_MD"
+fi
 
 # Clean up
 rm "$PLAN_MD" "$PLAN_JSON"
