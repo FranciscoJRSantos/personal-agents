@@ -50,13 +50,9 @@ the state (`status`, `commit`); the body table is display-only.
 
 These apply globally across all skills and agents.
 
-**Analysis Paralysis Guard:** After 5+ consecutive read/grep/glob calls with no write/edit/bash action, stop and state in one sentence what's blocking you, then either write code or ask the user for the missing information.
-
 **Authentication Gate Protocol:** Auth errors (401, 403, "Not authenticated") are *gates*, not bugs. Stop, tell the user exactly what credential/command is needed, provide a verification command, and wait for them to complete it. Never treat auth errors as code bugs.
 
 **Deviation Rules:** During execution, auto-fix bugs and missing critical functionality (error handling, validation, auth) without asking. Only stop for architectural decisions (new tables, framework changes, breaking API changes).
-
-**Deferral Convention:** Mark deliberate shortcuts with `deferred:` comments in code — format: `# deferred: <ceiling>, <upgrade path>`. Example: `# deferred: global lock, per-account locks if throughput matters`. Run `/debt-ledger` to harvest all deferrals into a tracked ledger.
 
 ## SpotMe Integration
 
