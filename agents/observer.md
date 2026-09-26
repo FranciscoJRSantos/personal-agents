@@ -136,20 +136,30 @@ git diff --name-only HEAD~5..HEAD 2>/dev/null | grep -v '^\.agents/' | head -30
 
 ### Step 2: Detect Structural Changes
 
-Scan top-level folders and hash their file trees:
+The shared state block below hashes every top-level folder tree and prints the
+current state as JSON. Run it as-is — do not redirect here; Step 4 writes the
+file. Then compare its `folders` map against the state loaded in Step 1.
 
+<!-- codemap-state-hash:begin — shared verbatim between /codemap and @observer; make lint-agents checks identity -->
 ```bash
-echo "=== Top-level folders ==="
-for dir in */; do
-  [ -d "$dir" ] || continue
-  dirname=$(basename "$dir")
-  hash=$(find "$dir" -type f -not -path '*/node_modules/*' -not -path '*/.git/*' -not -path '*/__pycache__/*' -not -path '*/.venv/*' -not -path '*/vendor/*' | sort | xargs md5sum 2>/dev/null | md5sum | cut -d' ' -f1)
-  echo "$dirname: $hash"
-done
+{
+  printf '{\n  "generated": "%s",\n  "folders": {\n' "$(date -Iseconds)"
+  first=1
+  for dir in */; do
+    [ -d "$dir" ] || continue
+    dirname=$(basename "$dir")
+    hash=$(find "$dir" -type f -not -path '*/node_modules/*' -not -path '*/.git/*' -not -path '*/__pycache__/*' -not -path '*/.venv/*' -not -path '*/vendor/*' | sort | xargs -r md5sum 2>/dev/null | md5sum | cut -d' ' -f1)
+    [ "$first" -eq 1 ] || printf ',\n'
+    first=0
+    printf '    "%s": "%s"' "$dirname" "$hash"
+  done
+  printf '\n  }\n}\n'
+}
 ```
+<!-- codemap-state-hash:end -->
 
-Compare against stored hashes in `codemap.json`. Identify folders whose hash
-changed, folders that are new, and folders that were removed.
+Identify folders whose hash changed, folders that are new, and folders that were
+removed.
 
 ### Step 3: Survey Changed Folders
 
@@ -210,20 +220,10 @@ Update `.agents/codemap/codemap.md` (the root atlas):
 - Update `Architecture Notes` if structural changes affect cross-cutting concerns
 - Keep `Generated:` timestamp current
 
-Update `.agents/codemap/codemap.json` with new hashes:
-
-```bash
-# Write updated state
-cat > .agents/codemap/codemap.json << 'STATEEOF'
-{
-  "generated": "<ISO 8601 timestamp>",
-  "folders": {
-    "src": "<hash>",
-    ...
-  }
-}
-STATEEOF
-```
+Update `.agents/codemap/codemap.json` with the new hashes by re-running the
+shared state block from Step 2, this time adding
+`> .agents/codemap/codemap.json` after its closing `}` so the output is written
+to the file.
 
 ### Step 5: Report What Changed
 

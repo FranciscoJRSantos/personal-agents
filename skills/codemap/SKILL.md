@@ -26,7 +26,8 @@ The skill works in three phases:
 1. **Scope** — detect the repo structure and decide what to map
 2. **Survey** — explore each top-level folder in parallel (or ask the user
    to narrow focus if the repo is large)
-3. **Document** — write per-folder `codemap.md` files and a root atlas
+3. **Document** — write per-folder `codemap.md` files, a root atlas, and the
+   change-detection state that `@observer` reads
 
 Output lives in `.agents/codemap/`:
 ```
@@ -196,30 +197,6 @@ Run `/codemap` to regenerate it after structural changes.
 
 ---
 
-## Change Detection (Incremental Updates)
-
-On subsequent runs, check for existing state:
-
-```bash
-CODEMAP_STATE=".agents/codemap/codemap.json"
-
-if [ -f "$CODEMAP_STATE" ]; then
-    echo "Change detection enabled — checking for structural changes..."
-    # Compare current file tree against stored hashes
-    # Only re-survey folders with changes
-else
-    echo "Fresh codemap — full survey"
-fi
-```
-
-For incremental updates:
-1. Hash the current top-level folder structure
-2. Compare against stored hashes in `codemap.json`
-3. Only re-document folders that changed
-4. Update the atlas to reflect structural changes
-
----
-
 ## Step 6: Shallow-Module Detection
 
 After surveying the folders, analyse each module for shallow-module patterns and surface
@@ -255,6 +232,45 @@ None detected — module granularity looks balanced.
 ```
 
 The suggestions are advisory only. Log them in the atlas; do not modify any files.
+
+---
+
+## Step 7: Write the Change-Detection State
+
+`@observer update` reads `.agents/codemap/codemap.json` to decide which folders
+to re-document. Nothing used to write that file, so observer's update mode always
+started from `NO_STATE`. Writing it is the final step of this skill.
+
+Create the directory, then run the shared state block below with its output
+redirected to the state file — add `> .agents/codemap/codemap.json` after the
+block's closing `}`. The same block lives in `agents/observer.md`, and
+`make lint-agents` fails if the two copies differ.
+
+```bash
+mkdir -p .agents/codemap
+```
+
+<!-- codemap-state-hash:begin — shared verbatim between /codemap and @observer; make lint-agents checks identity -->
+```bash
+{
+  printf '{\n  "generated": "%s",\n  "folders": {\n' "$(date -Iseconds)"
+  first=1
+  for dir in */; do
+    [ -d "$dir" ] || continue
+    dirname=$(basename "$dir")
+    hash=$(find "$dir" -type f -not -path '*/node_modules/*' -not -path '*/.git/*' -not -path '*/__pycache__/*' -not -path '*/.venv/*' -not -path '*/vendor/*' | sort | xargs -r md5sum 2>/dev/null | md5sum | cut -d' ' -f1)
+    [ "$first" -eq 1 ] || printf ',\n'
+    first=0
+    printf '    "%s": "%s"' "$dirname" "$hash"
+  done
+  printf '\n  }\n}\n'
+}
+```
+<!-- codemap-state-hash:end -->
+
+This records one hash per top-level folder. `@observer update` compares the
+hashes against the tree on disk to find changed, new, and removed folders, then
+refreshes only those.
 
 ---
 

@@ -148,6 +148,21 @@ lint-agents:
 			echo "OK    $$agent"; \
 		fi \
 	done; \
+	echo ""; \
+	echo "=== Checking shared codemap state-hash snippet ==="; \
+	tmp=$$(mktemp -d); \
+	sed -n '/codemap-state-hash:begin/,/codemap-state-hash:end/p' "$(GLOBAL_SKILLS)/codemap/SKILL.md" > "$$tmp/skill"; \
+	sed -n '/codemap-state-hash:begin/,/codemap-state-hash:end/p' "$(AGENTS_SRC)/observer.md" > "$$tmp/agent"; \
+	if [ ! -s "$$tmp/skill" ] || [ ! -s "$$tmp/agent" ]; then \
+		echo "FAIL  codemap state-hash snippet missing in /codemap or @observer"; \
+		ok=false; \
+	elif diff -q "$$tmp/skill" "$$tmp/agent" >/dev/null; then \
+		echo "OK    codemap state-hash snippet identical"; \
+	else \
+		echo "FAIL  codemap state-hash snippet differs between /codemap and @observer"; \
+		ok=false; \
+	fi; \
+	rm -rf "$$tmp"; \
 	$$ok
 
 ## Check AGENTS.md references match real skills and agents
